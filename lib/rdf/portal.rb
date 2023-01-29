@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "portal/version"
+require_relative 'portal/version'
 
 module Rdf
   module Portal
