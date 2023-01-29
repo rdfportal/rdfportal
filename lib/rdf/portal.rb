@@ -2,7 +2,7 @@
 
 require_relative 'portal/version'
 
-module Rdf
+module RDF
   module Portal
     class Error < StandardError; end
     # Your code goes here...

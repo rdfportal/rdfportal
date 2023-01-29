@@ -4,7 +4,7 @@ require_relative 'lib/rdf/portal/version'
 
 Gem::Specification.new do |spec|
   spec.name = 'rdf-portal'
-  spec.version = Rdf::Portal::VERSION
+  spec.version = RDF::Portal::VERSION
   spec.authors = ['Daisuke Satoh']
   spec.email = ['dsatoh@kamonohashi.co.jp']
 
