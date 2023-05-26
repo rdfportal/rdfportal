@@ -1,3 +1,18 @@
+---
+inherit_mode:
+  merge:
+    - Exclude
+
+inherit_from:
+  - .rubocop-disables.yml
+  - .rubocop-todo.yml
+
+require:
+  - rubocop-performance
+  - rubocop-rubycw
+
 AllCops:
   TargetRubyVersion: 3.1
+  Exclude:
+    - 'tmp/**/*.rb'
   NewCops: enable
