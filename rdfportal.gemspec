@@ -1,22 +1,20 @@
 # frozen_string_literal: true
 
-require_relative 'lib/rdf/portal/version'
+require_relative 'lib/rdfportal/version'
 
 Gem::Specification.new do |spec|
-  spec.name = 'rdf-portal'
-  spec.version = RDF::Portal::VERSION
+  spec.name = 'rdfportal'
+  spec.version = RDFPortal::VERSION
   spec.authors = ['Daisuke Satoh']
   spec.email = ['dsatoh@kamonohashi.co.jp']
 
-  spec.summary = 'CLI tools to update RDF Portal.'
-  spec.description = 'CLI tools to update RDF Portal.'
-  spec.homepage = 'https://github.com/dbcls/rdf-portal'
+  spec.summary = 'CLI tools for RDF Portal.'
+  spec.description = spec.summary
+  spec.homepage = 'https://github.com/rdfportal/rdfportal'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.1.0'
 
-  spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/dbcls/rdf-portal'
-  spec.metadata['changelog_uri'] = 'https://github.com/dbcls/rdf-portal'
+  spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.files = Dir.chdir(__dir__) do
     `git ls-files -z`.split("\x0").reject do |f|
@@ -27,5 +25,5 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.metadata['rubygems_mfa_required'] = 'true'
+  spec.add_dependency 'thor', '~> 1.2'
 end
