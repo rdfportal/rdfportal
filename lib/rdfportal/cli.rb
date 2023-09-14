@@ -85,7 +85,7 @@ module RDFPortal
 
       no_commands do
         def load_config(file)
-          if File.exist?((env = File.join(Dir.home, '.rdfportal', '.env')))
+          if File.exist?((env = File.join(Dir.home, '.rdfportal', 'config')))
             require 'dotenv'
             Dotenv.load(env)
           end
