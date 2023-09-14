@@ -19,6 +19,14 @@ module RDFPortal
         end
       end
 
+      map %w[--version -v] => :version
+
+      desc 'version', 'Show version number'
+
+      def version
+        puts "#{File.basename($PROGRAM_NAME)} #{VERSION}"
+      end
+
       desc 'generate [SUBCOMMAND]', 'Commands for generator'
       subcommand :generate, Generator
 
