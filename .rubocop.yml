@@ -12,3 +12,6 @@ AllCops:
   Exclude:
     - 'tmp/**/*.rb'
   NewCops: enable
+
+Layout/BeginEndAlignment:
+  EnforcedStyleAlignWith: begin
