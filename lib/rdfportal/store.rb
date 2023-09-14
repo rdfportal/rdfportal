@@ -5,8 +5,9 @@ module RDFPortal
     PROGRAM_NAME = 'rdfportal-store'
 
     require 'rdfportal/store/base'
-    require 'rdfportal/store/connection_adapters'
     require 'rdfportal/store/port'
     require 'rdfportal/store/util'
+
+    require 'rdfportal/store/connection_adapters'
   end
 end
