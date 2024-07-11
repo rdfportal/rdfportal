@@ -4,4 +4,6 @@
 require 'bundler/setup'
 require 'rdfportal'
 
+RDFPortal.logger = RDFPortal::Logger.new($stderr, level: ENV.fetch('RDFPORTAL_LOGGER_LEVEL', 'info'))
+
 RDFPortal::CLI::Main.start(ARGV)

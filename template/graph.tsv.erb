@@ -1,0 +1,8 @@
+pattern	graph
+<%- if @datasets.present? -%>
+<%- @datasets.each do |dataset| -%>
+<%= dataset %>/latest/*.ttl	http://example.com/graph/<%= dataset %>
+<%- end -%>
+<%- else -%>
+latest/*.ttl	http://example.com/graph/<%= @name %>
+<%- end -%>
