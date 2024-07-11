@@ -1,0 +1,18 @@
+---
+<%- if @datasets.present? -%>
+<%- @datasets.each do |dataset| -%>
+<%= "#{dataset}:" %>
+  preserve: 5
+  days_skip_update: 5
+  locations:
+    - location:
+      options:
+<%- end -%>
+<%- else -%>
+"":
+  preserve: 5
+  days_skip_update: 5
+  locations:
+    - location:
+      options:
+<%- end -%>

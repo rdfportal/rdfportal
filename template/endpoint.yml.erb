@@ -1,21 +1,28 @@
 ---
-name: <%= name %>
-
-directory:
-  prefix: <%= File.join(Dir.home, '.rdfportal') %>
+name: <%= @name %>
 
 database:
   adapter: virtuoso
   host: localhost
   password: <%%= ENV.fetch('RDFPORTAL_VIRTUOSO_PASSWORD') %>
   options:
-    bin:<%= (path = `which virtuoso-t`.chomp).empty? ? '' : " #{File.dirname(path)}" %>
+    bin: <%= (path = `which virtuoso-t`.chomp).empty? ? '<PATH TO virtuoso-t>' : path %>
     ini_template: <%= File.join(Dir.home, '.rdfportal', 'virtuoso.ini.template') %> # change path to template file or copy to here
     cors: true
     federated_query: true
     text_index: false
+    default_graphs: false
   environment:
     load:
+      Database:
+        DatabaseFile: virtuoso.db
+        ErrorLogFile: virtuoso.log
+        LockFile: virtuoso.lck
+        TransactionFile: virtuoso.trx
+        xa_persistent_file: virtuoso.pxa
+      TempDatabase:
+        DatabaseFile: virtuoso-temp.db
+        TransactionFile: virtuoso-temp.trx
       Parameters:
         ServerPort: 1111
         NumberOfBuffers: 170000
@@ -27,6 +34,6 @@ load:
   snapshots: true
   parallel: 5
   datasets:
-  <%- datasets.each do |dataset| -%>
+  <%- @datasets.each do |dataset| -%>
     <%= "- name: #{dataset}" %>
   <%- end -%>

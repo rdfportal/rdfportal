@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 IFS=$'\n\t'
 set -vx
@@ -6,3 +7,13 @@ set -vx
 bundle install
 
 rake install
+
+if [[ ! -e $HOME/.rdfportal/config ]]; then
+  [[ -d $HOME/.rdfportal ]] || mkdir "$HOME/.rdfportal"
+  (
+    echo "RDFPORTAL_CONFIG_DIR=$HOME/.rdfportal/config"
+    echo "RDFPORTAL_ENDPOINTS_DIR=$HOME/.rdfportal/endpoints"
+    echo "RDFPORTAL_DATASETS_DIR=$HOME/.rdfportal/datasets"
+    echo "RDFPORTAL_VIRTUOSO_PASSWORD=dba"
+  ) >"$HOME/.rdfportal/config"
+fi

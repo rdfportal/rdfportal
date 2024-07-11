@@ -29,7 +29,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'activesupport', '~> 7.0'
   spec.add_dependency 'dotenv', '~> 2.8'
   spec.add_dependency 'erb', '~> 4.0'
-  spec.add_dependency 'github_api', '~> 0.19.0'
   spec.add_dependency 'inifile', '~> 3.0'
   spec.add_dependency 'net-ftp', '~> 0.2.0'
   spec.add_dependency 'nokogiri', '~> 1.15'

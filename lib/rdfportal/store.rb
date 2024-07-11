@@ -6,7 +6,6 @@ module RDFPortal
 
     require 'rdfportal/store/base'
     require 'rdfportal/store/port'
-    require 'rdfportal/store/util'
 
     require 'rdfportal/store/connection_adapters'
   end
