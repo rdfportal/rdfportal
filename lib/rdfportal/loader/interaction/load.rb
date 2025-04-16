@@ -69,6 +69,7 @@ module RDFPortal
 
         CSV_OPTIONS = {
           col_sep: "\t",
+          skip_lines: /^#/,
           headers: true,
           header_converters: :symbol
         }.freeze
