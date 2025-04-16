@@ -9,7 +9,7 @@ module RDFPortal
         class ConnectionBad < Error; end
 
         class Connection
-          include Util::ExternalCommand
+          include ExternalCommand
 
           DEFAULT_HOST = 'localhost'
           DEFAULT_PORT = 1111

@@ -9,7 +9,7 @@ module RDFPortal
   module Store
     module ConnectionAdapters
       class Virtuoso
-        include Util::ExternalCommand
+        include ExternalCommand
 
         class InsufficientConfiguration < Error; end
 

@@ -14,7 +14,7 @@ module RDFPortal
           end
         end
 
-        include Store::Util::ExternalCommand
+        include ExternalCommand
 
         def execute
           RDFPortal.logger = Store::Base.logger = Logger.new($stdout)
