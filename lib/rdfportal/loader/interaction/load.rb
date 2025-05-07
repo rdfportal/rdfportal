@@ -90,7 +90,7 @@ module RDFPortal
               CSV.foreach(path.to_s, **CSV_OPTIONS) do |tsv|
                 matched = path.dirname.glob(tsv[:pattern])
 
-                warnings.push(%(No files matched with "#{tsv[:pattern]}")) if matched.empty?
+                warnings.push(%(#{graph_file}: No files matched with "#{tsv[:pattern]}")) if matched.empty?
 
                 # split into small group to avoid stack error
                 matched.map(&:realpath).each_slice(10_000) do |g|
