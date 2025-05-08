@@ -23,13 +23,17 @@ module RDFPortal
   require 'rdfportal/store'
   require 'rdfportal/version'
 
-  class Logger < ActiveSupport::Logger
+  class Logger < ActiveSupport::BroadcastLogger
     def initialize(logdev)
-      super(logdev, level: ENV['LOG_LEVEL'].presence&.downcase || ::Logger::Severity::INFO)
+      logger_options = {
+        level: ENV['LOG_LEVEL'].presence&.downcase || ::Logger::Severity::INFO,
+        formatter: ::Logger::Formatter.new
+      }
 
-      @formatter = ::Logger::Formatter.new
+      loggers = [ActiveSupport::Logger.new(logdev, **logger_options)]
+      loggers << ActiveSupport::Logger.new($stderr, **logger_options) unless [$stdout, $stderr].any?(logdev)
 
-      extend(ActiveSupport::Logger.broadcast(self.class.new($stdout))) unless [$stdout, $stderr].any?(logdev)
+      super(*loggers)
     end
   end
 
