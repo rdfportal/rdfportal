@@ -28,8 +28,10 @@ module RDFPortal
 
         def execute
           if pretend
+            list, warnings = load_list
             puts "restore from #{restore_from}" if restore_from
-            puts load_list.to_yaml
+            puts list.to_yaml
+            puts warnings.to_yaml.sub(/^---$/, "\n---\n# Warnings:") if warnings.present?
             return
           end
 
@@ -69,6 +71,7 @@ module RDFPortal
 
         CSV_OPTIONS = {
           col_sep: "\t",
+          skip_lines: /^#/,
           headers: true,
           header_converters: :symbol
         }.freeze
@@ -78,15 +81,20 @@ module RDFPortal
           datasets = datasets.drop_while { |hash| hash[:name] != dataset_from } if dataset_from.present?
 
           datasets.map do |dataset|
-            graphs = Hash.new { |h, k| h[k] = [] }
+            files = Hash.new { |h, k| h[k] = [] }
+            warnings = []
 
             (dataset[:files].presence || ["#{dataset[:name]}/graph.tsv"]).each do |graph_file|
               path = repository.datasets / graph_file
 
               CSV.foreach(path.to_s, **CSV_OPTIONS) do |tsv|
+                matched = path.dirname.glob(tsv[:pattern])
+
+                warnings.push(%(#{graph_file}: No files matched with "#{tsv[:pattern]}")) if matched.empty?
+
                 # split into small group to avoid stack error
-                path.dirname.glob(tsv[:pattern]).map(&:realpath).each_slice(10_000) do |g|
-                  graphs[tsv[:graph]].push(*g.map(&:to_s))
+                matched.map(&:realpath).each_slice(10_000) do |g|
+                  files[tsv[:graph]].push(*g.map(&:to_s))
                 end
               end
             end
@@ -94,21 +102,24 @@ module RDFPortal
             {
               name: dataset[:name],
               parallel: dataset[:parallel],
-              files: graphs
+              files:,
+              warnings:
             }
           end
         end
 
         def load_list
           hash = Hash.new { |h, k| h[k] = [] }
+          warnings = []
 
           datasets.each do |dataset|
             dataset[:files].each do |graph, files|
               files.each_slice(10_000) { |g| hash[graph].push(*g) }
             end
+            warnings.push(*dataset[:warnings])
           end
 
-          hash
+          [hash, warnings]
         end
 
         def restore_from
