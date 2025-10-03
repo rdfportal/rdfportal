@@ -1,0 +1,31 @@
+{
+  "text": "<%= defined?(preview_icon) ? "#{preview_icon} " : '' %><%= escape_javascript(defined?(title) && title.present? ? title : message) %>",
+  "attachments": [
+    {
+      "color": "<%= color %>",
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "<%= escape_javascript(message) %>"
+          }
+        },
+        {
+          "type": "divider"
+        }
+        <% if defined?(log_file) && log_file.present? %>,
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "<%= escape_javascript("Results logged to `#{log_file}`") %>"
+            }
+          ]
+        }
+        <%- end -%>
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "text": "<%= defined?(preview_icon) ? "#{preview_icon} " : '' %>Dataset update for <%= escape_javascript(name) %>",
+  "attachments": [
+    {
+      "color": "<%= color %>",
+      "blocks": [
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Dataset:*\n<%= escape_javascript(name) %>"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Status:*\n<%= escape_javascript(status) %>"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*Directory:*\n`<%= escape_javascript(directory) %>`"
+          }
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": "*Disk usage:*\n<%= escape_javascript(disk_usage) %>"
+            },
+            {
+              "type": "mrkdwn",
+              "text": "*Total time elapsed:*\n<%= escape_javascript(time) %>"
+            }
+          ]
+        }
+        <% if defined?(context) && context.present? %>,
+        {
+          "type": "divider"
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "<%= escape_javascript(context) %>"
+            }
+          ]
+        }
+        <%- end -%>
+      ]
+    }
+  ]
+}

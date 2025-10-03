@@ -1,48 +1,31 @@
 # frozen_string_literal: true
 
+require 'thor'
+
 module RDFPortal
   module CLI
-    require 'rdfportal/cli/generate'
-    require 'rdfportal/cli/statistics'
+    require 'rdfportal/cli/dataset'
+    require 'rdfportal/cli/doctor'
+    require 'rdfportal/cli/job'
+    require 'rdfportal/cli/setup'
 
     class Main < Thor
-      include Configurable
-
       class << self
         def exit_on_failure?
           true
         end
       end
 
-      desc 'generate [SUBCOMMAND]', 'Commands for generator'
-      subcommand :generate, Generate
+      register Doctor, 'doctor', 'doctor', Doctor.desc
 
-      desc 'statistics [SUBCOMMAND]', 'Commands for statistics'
-      subcommand :statistics, Statistics
+      desc 'setup [SUBCOMMAND]', 'Commands for setup', hide: true
+      subcommand :setup, Setup::Commands
 
-      desc 'fetch <endpoint name>', 'Fetch datasets'
-      option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
-      option :debug, type: :boolean, desc: 'Show error stack trace'
+      desc 'dataset [SUBCOMMAND]', 'Commands for datasets'
+      subcommand :dataset, Dataset
 
-      def fetch(name)
-        datasets = load_yaml(File.join(RDFPortal.config_dir, ENDPOINTS_DIR_NAME, "#{name}.yml")).dig(:load, :datasets)
-
-        result = RDFPortal::Interaction::FetchDatasets.run!(datasets:, pretend: options[:pretend])
-
-        return unless options[:pretend]
-
-        result.each do |key, contents|
-          contents.each do |content|
-            from = content.uri
-            to = File.join(*(Array(key) + [Time.now.strftime(Repository::Dataset::VERSION_FORMAT), content.output_path]))
-            puts "#{from} -> #{to}"
-          end
-        end
-      rescue StandardError => e
-        say_error e.message
-        say_error e.full_message if options[:debug]
-        exit 1
-      end
+      desc 'job [SUBCOMMAND]', 'Commands for job runner'
+      subcommand :job, Job
 
       desc 'version', 'Show version number'
 

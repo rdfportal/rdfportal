@@ -1,0 +1,122 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+require 'faktory_worker_ruby'
+require 'faktory/cli'
+require 'fileutils'
+require 'logger'
+require 'optparse'
+
+require_relative '../lib/rdfportal/job/worker/helper'
+
+IDLE_EXIT_SECONDS = ENV.fetch('IDLE_EXIT_SECONDS', 30).to_i
+
+options = {
+  host: 'localhost',
+  port: '7419',
+  concurrency: '1'
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{File.basename(__FILE__)} [options] <worker.rb>"
+  opts.on('-c', '--concurrency INT', Integer, 'Concurrency') { |v| options[:concurrency] = v }
+  opts.on('--log-file FILE', String, 'Log file') { |v| options[:log_file] = v }
+  opts.on('-q', '--queue NAME', String, 'Queue name') { |v| options[:queue] = v }
+  opts.on('-p', '--persistent', 'Do not exit automatically') { |_| options[:persistent] = true }
+  opts.on('-h', '--help', 'Prints this help') do
+    puts opts
+    exit
+  end
+  opts.separator ''
+  opts.separator 'Connection options:'
+  opts.on('--host HOST', String, 'Faktory host') { |v| options[:host] = v }
+  opts.on('--port PORT', String, 'Faktory port') { |v| options[:port] = v }
+  opts.on('--password PASSWORD', String, 'Faktory password') { |v| options[:password] = v }
+end.parse!
+
+abort 'Missing --queue option' unless options[:queue]
+
+ENV['FAKTORY_PROVIDER'] = 'RDFPORTAL_FAKTORY_PROVIDER'
+ENV['RDFPORTAL_FAKTORY_PROVIDER'] = if options[:password]
+                                      "tcp://:#{options[:password]}@#{options[:host]}:#{options[:port]}"
+                                    else
+                                      "tcp://#{options[:host]}:#{options[:port]}"
+                                    end
+
+FileUtils.mkdir_p(File.dirname(options[:log_file])) if options[:log_file]
+
+Faktory.logger = Logger.new(options[:log_file] || $stderr, 5, 10 * 1024 * 1024,
+                            level: Logger::Severity::DEBUG,
+                            formatter: Logger::Formatter.new)
+
+Faktory.options[:job_logger] = JobLogger
+
+Faktory.configure_worker do |config|
+  config.worker_middleware do |chain|
+    chain.add QueueCountMiddleware
+  end
+end
+
+module Faktory
+  module Job
+    def remaining_job_count
+      queue = begin
+                Faktory.server(&:info).dig('faktory', 'queues', faktory_options_hash['queue'].to_s)
+              rescue StandardError
+                0
+              end
+
+      queue + [0, ThreadSafeCounter.instance.value - 1].max
+    end
+  end
+end
+
+# usage: faktory-worker [options]
+#   -c, --concurrency INT            processor threads to use
+#   -e, --environment ENV            Application environment
+#   -g, --tag TAG                    Process tag for procline
+#   -l, --label LABEL                Process label to use in Faktory UI
+#   -q, --queue QUEUE[,WEIGHT]       Queues to process with optional weights
+#   -r, --require [PATH|DIR]         Location of Rails application with workers or file to require
+#   -t, --timeout NUM                Shutdown timeout
+#   -v, --verbose                    Print more verbose output
+#   -C, --config PATH                path to YAML config file
+#   -V, --version                    Print version and exit
+#   -h, --help                       Show help
+
+args = []
+args << '--concurrency' << options[:concurrency].to_s
+args << '--environment' << 'production'
+args << '--queue' << options[:queue]
+args << '--require' << File.expand_path(ARGV[0])
+
+cli = Faktory::CLI.instance
+cli.parse(args)
+
+last_active_at = Time.now
+
+unless options[:persistent]
+  Thread.new do
+    loop do
+      sleep 1
+
+      unless ThreadSafeCounter.instance.value.zero?
+        last_active_at = Time.now
+        next
+      end
+
+      next unless Time.now - last_active_at >= IDLE_EXIT_SECONDS
+
+      begin
+        Process.kill('INT', Process.pid)
+      rescue StandardError
+        nil
+      end
+      break
+    end
+  end
+end
+
+cli.run
