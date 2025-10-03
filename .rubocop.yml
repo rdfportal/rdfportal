@@ -3,7 +3,7 @@ inherit_from:
   - .rubocop-disables.yml
   - .rubocop-todo.yml
 
-require:
+plugins:
   - rubocop-performance
   - rubocop-rubycw
 
@@ -12,6 +12,7 @@ AllCops:
   Exclude:
     - 'tmp/**/*.rb'
   NewCops: enable
+  SuggestExtensions: false
 
 Layout/BeginEndAlignment:
   EnforcedStyleAlignWith: begin
