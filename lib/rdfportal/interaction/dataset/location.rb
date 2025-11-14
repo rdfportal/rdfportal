@@ -28,10 +28,8 @@ module RDFPortal
 
         attr_reader :directory, :parameters, :continue
 
-        validates :directory_prefix, presence: true
-
         def initialize(inputs = {})
-          @directory = inputs.delete(:directory)&.then { |x| Pathname.new(x) }
+          @directory = inputs.delete(:directory)&.then { |d| Pathname.new(d) }
           @parameters = inputs.delete(:parameters) || {}
           @continue = inputs.delete(:continue)
 

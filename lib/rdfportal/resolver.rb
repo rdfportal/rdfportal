@@ -10,7 +10,7 @@ module RDFPortal
       end
 
       def location(url, **options)
-        entries = RemoteDirectory.parse(url)
+        entries = Resource.parse(url)
                                  .list(**options)
                                  .delete_if { |x| options[:type].present? && options[:type].to_sym != x.type }
                                  .to_h { |x| [x, { basename: x.basename }] }
@@ -46,24 +46,34 @@ module RDFPortal
         end
 
         if options[:sort]
+          RDFPortal.logger.debug(self) { "Sorter = #{options[:sort]}" }
+
           entries.each_value do |x|
+            str = options[:match] ? x[:capture] : x[:basename]
             x[:sort] = case options[:sort]
                        when 'datetime'
                          begin
-                           DateTime.parse(options[:match] ? x[:capture] : x[:basename])
+                           DateTime.parse(str)
                          rescue StandardError
+                           RDFPortal.logger.warn(self) { "Failed to parse datetime: #{str}" }
                            nil
                          end
                        when 'version'
                          begin
-                           Gem::Version.new(x.gsub(/\D+/, '.')[/(#{Gem::Version::VERSION_PATTERN})/o, 0])
+                           Gem::Version.new(str.gsub(/\D+/, '.')[/(#{Gem::Version::VERSION_PATTERN})/o, 0])
                          rescue StandardError
+                           RDFPortal.logger.warn(self) { "Failed to parse version: #{str}" }
                            nil
                          end
-                       when 'numeric'
-                         Integer(x, exception: false)
+                       when 'numerical'
+                         begin
+                           Integer(str)
+                         rescue StandardError
+                           RDFPortal.logger.warn(self) { "Failed to parse integer: #{str}" }
+                           nil
+                         end
                        else
-                         options[:match] ? x[:capture] : x[:basename]
+                         str
                        end
           end
 

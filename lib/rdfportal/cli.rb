@@ -6,6 +6,7 @@ module RDFPortal
   module CLI
     require 'rdfportal/cli/dataset'
     require 'rdfportal/cli/doctor'
+    require 'rdfportal/cli/endpoint'
     require 'rdfportal/cli/job'
     require 'rdfportal/cli/setup'
 
@@ -23,6 +24,9 @@ module RDFPortal
 
       desc 'dataset [SUBCOMMAND]', 'Commands for datasets'
       subcommand :dataset, Dataset
+
+      desc 'endpoint [SUBCOMMAND]', 'Commands for endpoints'
+      subcommand :endpoint, Endpoint
 
       desc 'job [SUBCOMMAND]', 'Commands for job runner'
       subcommand :job, Job

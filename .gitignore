@@ -12,3 +12,5 @@
 
 # Version lock file
 /Gemfile.lock
+
+.env

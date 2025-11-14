@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'csv'
+require 'yaml'
+
 module RDFPortal
   module Configurable
     def load_yaml(file)
@@ -11,6 +14,10 @@ module RDFPortal
 
     def save_yaml(file, hash)
       File.write(file, YAML.dump(hash.deep_stringify_keys))
+    end
+
+    def load_tsv(file)
+      CSV.open(file, col_sep: "\t", quote_char: nil, headers: true, header_converters: :symbol)
     end
   end
 end

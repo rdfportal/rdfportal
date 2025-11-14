@@ -3,6 +3,7 @@
 require 'active_interaction'
 require 'active_model'
 require 'benchmark'
+require 'sequel'
 require 'tty-command'
 
 module ActiveInteraction
@@ -137,6 +138,6 @@ class Float
   def readable_duration
     return to_i.readable_duration if self > 60.0
 
-    "#{round(3)} seconds"
+    "#{round(3)}s"
   end
 end

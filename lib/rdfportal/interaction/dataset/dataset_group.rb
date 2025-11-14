@@ -4,8 +4,6 @@ module RDFPortal
   module Interaction
     module Dataset
       class DatasetGroup < Base
-        include ExternalCommand
-
         string :group, default: nil
 
         integer :preserve, default: nil
@@ -27,9 +25,7 @@ module RDFPortal
 
         validate :postprocess_config
 
-        attr_reader :directory_prefix, :parameters, :continue
-
-        validates :directory_prefix, presence: true
+        attr_reader :directory, :parameters, :continue
 
         PID_FILE = '.fetch.pid'
 
@@ -38,10 +34,12 @@ module RDFPortal
         REGEX_GZIP_ARCHIVES = /\A.*(?<!\.tar)\.(gz|bgz)\z/
         REGEX_TAR_ARCHIVES = /\A.*\.(tar\.gz|tgz|tar\.bz2|tbz|tbz2|tar\.xz|txz)\z/
 
+        include ExternalCommand
+
         def initialize(inputs = {})
-          @directory_prefix = if (path = inputs.delete(:directory_prefix))
-                                Pathname.new(path)
-                              end
+          raise(Error, 'directory is required') unless (dir = inputs.delete(:directory))
+
+          @directory = Pathname.new(dir)
           @parameters = inputs.delete(:parameters) || {}
           @continue = inputs.delete(:continue)
 
@@ -70,7 +68,7 @@ module RDFPortal
 
               next if fetch_error_or_empty?
 
-              @results << compose(Update, group:, preserve:, directory_prefix:, metadata:)
+              @results << compose(Update, group:, preserve:, directory:, metadata:)
             end
 
             RDFPortal.logger.info(self.class) { "Finished fetching #{group_name} in #{t.readable_duration}" } if group
@@ -171,14 +169,14 @@ module RDFPortal
         end
 
         def group_name
-          group ? "#{directory_prefix.basename}/#{group}" : directory_prefix.basename
+          group ? "#{directory.basename}/#{group}" : directory.basename
         end
 
         def repository
           @repository ||= if group
-                            Repository::Dataset.new(directory_prefix.join(group))
+                            Repository::Dataset.new(directory.join(group))
                           else
-                            Repository::Dataset.new(directory_prefix)
+                            Repository::Dataset.new(directory)
                           end
         end
 
@@ -214,7 +212,7 @@ module RDFPortal
         def lock(&)
           return yield if pretend
 
-          if (lock_file = directory_prefix.join(PID_FILE)).exist?
+          if (lock_file = directory.join(PID_FILE)).exist?
             RDFPortal.logger.info(self.class) { 'Another process is fetching. Waiting...' }
 
             sleep 5 while lock_file.exist?
@@ -241,7 +239,7 @@ module RDFPortal
           locations = {}
 
           fetch.each_with_index do |hash, i|
-            locations[i] = (location = Location.new(**hash, directory_prefix:, continue:, pretend:))
+            locations[i] = (location = Location.new(**hash, directory: target_dir, continue:, pretend:))
 
             next if location.valid?
 

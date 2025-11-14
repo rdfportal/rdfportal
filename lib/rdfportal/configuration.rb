@@ -4,51 +4,41 @@ require 'dotenv'
 
 module RDFPortal
   module Configuration
-    CONFIG = File.join(Dir.home, '.rdfportal', 'config')
+    REQUIRED_ENV_VARS = %w[RDFPORTAL_CONFIG_DIR RDFPORTAL_DATASETS_DIR].freeze
 
     DEFAULTS = {
       RDFPORTAL_CONFIG_DIR: File.join(Dir.home, 'rdfportal', 'config'),
-      RDFPORTAL_DATASETS_DIR: File.join(Dir.home, 'rdfportal', 'datasets'),
-      RDFPORTAL_FAKTORY: 'system',
-      RDFPORTAL_FAKTORY_HOST: 'localhost',
-      RDFPORTAL_FAKTORY_NETWORK_PORT: '7419',
-      RDFPORTAL_FAKTORY_WEBUI_PORT: '7420',
-      RDFPORTAL_FAKTORY_PASSWORD: nil,
-      RDFPORTAL_REDIS: 'system',
-      RDFPORTAL_REDIS_HOST: 'localhost',
-      RDFPORTAL_REDIS_PORT: '6379',
-      RDFPORTAL_SLACK_WEBHOOK_URL: nil,
-      RDFPORTAL_VIRTUOSO: 'system',
-      RDFPORTAL_VIRTUOSO_PASSWORD: 'dba',
-      RDFPORTAL_WORKER_FETCH_CONCURRENCY: 5,
-      RDFPORTAL_WORKER_LOAD_CONCURRENCY: 1,
-      RDFPORTAL_WORKER_STAT_CONCURRENCY: 1
+      RDFPORTAL_DATASETS_DIR: File.join(Dir.home, 'rdfportal', 'datasets')
     }.freeze
 
-    unless File.exist?(CONFIG)
-      FileUtils.mkdir_p(File.dirname(CONFIG))
-      File.write(CONFIG, "# created by rdfportal at #{Time.now}\n\n")
+    CONFIG_FILE = RDFPortal.home.join('config').to_s
+
+    unless File.exist?(CONFIG_FILE)
+      FileUtils.mkdir_p(File.dirname(CONFIG_FILE))
+      File.write(CONFIG_FILE, "# created by rdfportal at #{Time.now}\n\n")
     end
 
-    File.read(CONFIG).lines.then do |lines|
-      DEFAULTS.each do |key, value|
-        File.write(CONFIG, "#{key}=#{value}\n", mode: 'a') if lines.grep(/^#{key}=/).empty?
+    File.read(CONFIG_FILE).lines.then do |lines|
+      REQUIRED_ENV_VARS.each do |key|
+        next if lines.grep(/^#{key}=/).any?
+
+        File.write(CONFIG_FILE, "#{key}=#{DEFAULTS[key]}\n", mode: 'a')
       end
     end
 
-    Dotenv.load(CONFIG)
+    Dotenv.load(CONFIG_FILE)
 
     def debug?
       ENV.fetch('DEBUG', nil)
     end
 
     def config_dir
-      Pathname.new(ENV.fetch('RDFPORTAL_CONFIG_DIR'))
+      ENV.fetch('RDFPORTAL_CONFIG_DIR').then { |x| Pathname.new(x) }
     end
 
     # Default directory if dataset.yaml is missing
     def datasets_dir
-      Pathname.new(ENV.fetch('RDFPORTAL_DATASETS_DIR'))
+      ENV.fetch('RDFPORTAL_DATASETS_DIR').then { |x| Pathname.new(x) }
     end
 
     def slack_webhook_url
@@ -56,7 +46,9 @@ module RDFPortal
     end
 
     def redis
-      %i[system docker].find { |x| x.to_s == ENV.fetch('RDFPORTAL_REDIS', 'system') }
+      ENV.fetch('RDFPORTAL_REDIS', 'system').then(&:to_sym).tap do |x|
+        raise Error, "Invalid value for RDFPORTAL_REDIS: #{x}" unless %i[system docker].include?(x)
+      end
     end
 
     def redis_host
@@ -68,7 +60,9 @@ module RDFPortal
     end
 
     def faktory
-      %i[system docker].find { |x| x.to_s == ENV.fetch('RDFPORTAL_FAKTORY', 'system') }
+      ENV.fetch('RDFPORTAL_FAKTORY', 'system').then(&:to_sym).tap do |x|
+        raise Error, "Invalid value for RDFPORTAL_FAKTORY: #{x}" unless %i[system docker].include?(x)
+      end
     end
 
     def faktory_host
@@ -88,11 +82,17 @@ module RDFPortal
     end
 
     def virtuoso
-      %i[system docker].find { |x| x.to_s == ENV.fetch('RDFPORTAL_VIRTUOSO', 'system') }
+      ENV.fetch('RDFPORTAL_VIRTUOSO', 'system').then(&:to_sym).tap do |x|
+        raise Error, "Invalid value for RDFPORTAL_VIRTUOSO: #{x}" unless %i[system docker].include?(x)
+      end
     end
 
     def virtuoso_password
       ENV.fetch('RDFPORTAL_VIRTUOSO_PASSWORD', 'dba')
+    end
+
+    def virtuoso_home
+      ENV.fetch('RDFPORTAL_VIRTUOSO_HOME', nil).then { |x| Pathname.new(x) if x }
     end
 
     def worker_fetch_concurrency

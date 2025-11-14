@@ -18,12 +18,12 @@ module RDFPortal
   ENDPOINTS_DIR_NAME = 'endpoints'
   GRAPH_FILE_NAME = 'graph.tsv'
 
-  require 'rdfportal/configuration'
-  extend Configuration
-
   def self.home
     Pathname.new(Dir.home).join('.rdfportal')
   end
+
+  require 'rdfportal/configuration'
+  extend Configuration
 
   def self.config_endpoints_dir
     config_dir.join(ENDPOINTS_DIR_NAME)
@@ -33,25 +33,52 @@ module RDFPortal
     config_dir.join(DATASETS_DIR_NAME)
   end
 
-  # @deprecated use `directory.prefix` in endpoint.yaml
-  def self.endpoints_dir
-    Pathname.new(ENV.fetch('RDFPORTAL_ENDPOINTS_DIR'))
-  end
-
-  def self.endpoint_yaml(name)
+  def self.endpoint_config(name, env = nil)
     path = config_endpoints_dir.join("#{name}.yml")
 
     raise Error, "File not found: #{path}" unless path.exist?
 
+    hash = load_yaml(path)
+
+    if env
+      environment = (database = hash[:database])&.delete(:environment)
+
+      database.merge!(environment[env]) if environment&.key?(env)
+    end
+
+    hash
+  end
+
+  def self.dataset_config(name, exception: true)
+    path = config_datasets_dir.join(name, DATASET_FILE_NAME)
+
+    unless path.exist?
+      raise Error, "File not found: #{path}" if exception
+
+      return
+    end
+
     load_yaml(path)
   end
 
-  def self.dataset_yaml(name)
-    path = config_datasets_dir.join(name, DATASET_FILE_NAME)
+  def self.graph_config(name)
+    path = config_datasets_dir.join(name, GRAPH_FILE_NAME)
 
     raise Error, "File not found: #{path}" unless path.exist?
 
-    load_yaml(path)
+    load_tsv(path).map do |row|
+      row[:path] = path.to_s
+
+      if row[:pattern]
+        dataset = dataset_config(name, exception: false)
+
+        datasets_dir = File.join(dataset&.dig(:directory, :prefix) || RDFPortal.datasets_dir.to_s, name)
+
+        row[:pattern] = File.expand_path(row[:pattern], datasets_dir)
+      end
+
+      row
+    end
   end
 
   require 'rdfportal/extension'
@@ -65,9 +92,10 @@ module RDFPortal
   require 'rdfportal/logger'
   require 'rdfportal/matcher'
   require 'rdfportal/notifier'
-  require 'rdfportal/remote_directory'
+  require 'rdfportal/resource'
   require 'rdfportal/repository'
   require 'rdfportal/resolver'
+  require 'rdfportal/store'
   require 'rdfportal/version'
 
   extend Configurable

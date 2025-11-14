@@ -31,7 +31,7 @@ module RDFPortal
 
           return false unless pid
 
-          Process.kill('EXIT', pid)
+          Process.kill(0, pid)
 
           true
         rescue Errno::ESRCH

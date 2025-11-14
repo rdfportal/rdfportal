@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 module RDFPortal
+  require 'rdfportal/external_command'
+
   class Downloader
-    require 'rdfportal/external_command'
+    attr_reader :url, :output, :recursive, :include, :exclude, :options, :pretend, :pretend_output
 
     include ExternalCommand
-
-    attr_reader :url, :output, :recursive, :include, :exclude, :options, :pretend, :pretend_output
 
     def initialize(url:, output:, recursive:, include: [], exclude: [], **options)
       @url = url
@@ -340,7 +340,7 @@ module RDFPortal
     def content_not_modified?(url, local)
       return false unless File.exist?(local)
 
-      last_modified = RemoteDirectory::HTTP.last_modified(url)
+      last_modified = Resource::HTTP.last_modified(url)
 
       return false if last_modified && File.mtime(local) < last_modified
 

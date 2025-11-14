@@ -12,7 +12,7 @@ module RDFPortal
 
         hash :parameters, default: {}, strip: false
 
-        flex_array :datasets, default: nil do
+        flex_array :datasets do
           hash strip: false
         end
 
@@ -57,7 +57,7 @@ module RDFPortal
               inputs = {
                 preserve:,
                 **hash,
-                directory_prefix:,
+                directory: directory_prefix,
                 parameters:,
                 continue:,
                 pretend:
@@ -100,7 +100,7 @@ module RDFPortal
           datasets.each_with_index do |hash, i|
             (groups[hash[:group]] ||= []).push(i)
 
-            next if (group = DatasetGroup.new(**hash, directory:, preserve:, continue:, pretend:)).valid?
+            next if (group = DatasetGroup.new(**hash, directory: directory_prefix, preserve:, continue:, pretend:)).valid?
 
             attribute = raw_input(:datasets).is_a?(Array) ? "datasets[#{i}]" : :datasets
 

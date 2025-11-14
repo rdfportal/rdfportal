@@ -68,7 +68,7 @@ module RDFPortal
         end
       end
 
-      CACHE_FILE_NAME = 'cache.yml'
+      CACHE_FILE_NAME = '.cache.yml'
       LATEST_DIR_NAME = 'latest'
       VERSION_FORMAT = '%Y%m%d'
       VERSION_REGEX = /\A(?<year>[1-9]\d{3})(?<month>0[1-9]|1[0-2])(?<day>0[1-9]|[12][0-9]|3[01])\Z/

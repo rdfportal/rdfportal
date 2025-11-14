@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require 'tty-command'
+require 'rdfportal/extension'
 
 module RDFPortal
   module ExternalCommand
-    require 'rdfportal/extension'
 
     # @return [TTY::Command::Result]
     def run_cmd(*cmd, **options)
@@ -19,7 +19,9 @@ module RDFPortal
       end
 
       time, ret = Benchmark.realtime_with_return do
-        TTY::Command.new(printer: :null).run!(*cmd, **cmd_options(**options)) do |out, err|
+        method = options[:exception] ? :run : :run!
+
+        TTY::Command.new(printer: :null).send(method, *cmd, **cmd_options(**options)) do |out, err|
           if (out = out&.strip).present? && options[:stdout] != false
             out = options[:format].call(out) if options[:format]
 
@@ -50,6 +52,10 @@ module RDFPortal
       end
 
       ret
+    end
+
+    def run_cmd!(*cmd, **options)
+      run_cmd(*cmd, **options, exception: true)
     end
 
     def cmd_options(**options)

@@ -28,22 +28,6 @@ module RDFPortal
       #   end
       # end
 
-      def check_python
-        say 'Checking python...'
-
-        require 'pycall/import'
-
-        self.class.include PyCall::Import
-
-        pyimport :sysconfig
-
-        libdir = sysconfig.get_config_var('LIBDIR') || ''
-
-        result(libdir.present?, "python binding#{" (#{libdir})" if libdir.present?}")
-      rescue StandardError => e
-        result(false, "python binding (#{e.message})")
-      end
-
       def check_redis
         say "\nChecking redis... (#{RDFPortal.redis})"
 

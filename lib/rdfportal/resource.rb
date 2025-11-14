@@ -4,9 +4,7 @@ require 'nokogiri'
 require 'typhoeus'
 
 module RDFPortal
-  class RemoteDirectory
-    include ExternalCommand
-
+  class Resource
     module Type
       DIRECTORY = :directory
       FILE = :file
@@ -19,6 +17,8 @@ module RDFPortal
           HTTP.new(uri)
         when URI::FTP
           FTP.new(uri)
+        when URI::File
+          Local.new(uri)
         else
           raise ArgumentError, "Unsupported URL: #{uri}"
         end
@@ -28,6 +28,8 @@ module RDFPortal
     end
 
     attr_reader :uri
+
+    include ExternalCommand
 
     def initialize(uri)
       @uri = URI(uri)
@@ -51,7 +53,7 @@ module RDFPortal
     end
   end
 
-  class HTTP < RemoteDirectory
+  class HTTP < Resource
     class << self
       def last_modified(uri, **options)
         http_opts = { followlocation: true }.merge(Hash(options[:http]))
@@ -86,7 +88,7 @@ module RDFPortal
     end
   end
 
-  class FTP < RemoteDirectory
+  class FTP < Resource
     def list(**options)
       cmd = ['lftp']
 
@@ -116,6 +118,21 @@ module RDFPortal
         if entry.to_s.match?(%r{/$})
           Entry.new(entry, Type::DIRECTORY)
         else
+          Entry.new(entry, Type::FILE)
+        end
+      end
+    end
+  end
+
+  class Local < Resource
+    def list(**options)
+      Pathname.new(uri.path).each_child.filter_map do |x|
+        entry = uri.dup
+        entry.path = x.to_s
+
+        if x.directory?
+          Entry.new(entry, Type::DIRECTORY)
+        elsif x.file?
           Entry.new(entry, Type::FILE)
         end
       end

@@ -21,7 +21,7 @@ module RDFPortal
 
         self.started_at = Time.now
 
-        action = Interaction::Dataset::Fetch.run(**RDFPortal.dataset_yaml(name), name:, **options.symbolize_keys)
+        action = Interaction::Dataset::Fetch.run(**RDFPortal.dataset_config(name), name:, **options.symbolize_keys)
 
         raise Error, "Invalid interaction\n#{action.errors.input_error_messages}" unless action.valid?
 

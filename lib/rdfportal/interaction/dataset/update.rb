@@ -4,18 +4,18 @@ module RDFPortal
   module Interaction
     module Dataset
       class Update < Base
-        include ExternalCommand
-
         string :group, default: nil
 
         integer :preserve, default: nil
 
-        attr_reader :directory_prefix
+        attr_reader :directory
 
-        validates :directory_prefix, presence: true
+        include ExternalCommand
 
         def initialize(inputs = {})
-          @directory_prefix = inputs.delete(:directory_prefix)&.then { |x| Pathname.new(x) }
+          raise(Error, 'directory is required') unless (dir = inputs.delete(:directory))
+
+          @directory = Pathname.new(dir)
           @metadata = inputs.delete(:metadata)
 
           super
@@ -39,14 +39,14 @@ module RDFPortal
         private
 
         def group_name
-          group ? "#{directory_prefix.basename}/#{group}" : directory_prefix.basename
+          group ? "#{directory.basename}/#{group}" : directory.basename
         end
 
         def repository
           @repository ||= if group
-                            Repository::Dataset.new(directory_prefix.join(group))
+                            Repository::Dataset.new(directory.join(group))
                           else
-                            Repository::Dataset.new(directory_prefix)
+                            Repository::Dataset.new(directory)
                           end
         end
 

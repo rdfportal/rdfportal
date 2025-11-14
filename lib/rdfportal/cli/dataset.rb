@@ -12,7 +12,7 @@ module RDFPortal
       desc 'config <NAME>', 'Parse, resolve and render dataset configuration'
 
       def config(name)
-        interaction = Interaction::Dataset::Fetch.new(**RDFPortal.dataset_yaml(name), name:)
+        interaction = Interaction::Dataset::Fetch.new(**RDFPortal.dataset_config(name), name:)
 
         raise(Error, interaction.errors.input_error_messages) unless interaction.valid?
 
@@ -30,7 +30,7 @@ module RDFPortal
       def fetch(name)
         RDFPortal.logger = RDFPortal::Logger.new($stderr) if RDFPortal.debug? || !options[:pretend]
 
-        action = Interaction::Dataset::Fetch.run(**RDFPortal.dataset_yaml(name), name:, **options.symbolize_keys)
+        action = Interaction::Dataset::Fetch.run(**RDFPortal.dataset_config(name), name:, **options.symbolize_keys)
 
         raise(Error, action.errors.input_error_messages) unless action.valid?
 
@@ -46,7 +46,7 @@ module RDFPortal
       def update(name, group: nil)
         name, group = name.split('/', 2) if name.include?('/')
 
-        config = RDFPortal.dataset_yaml(name)
+        config = RDFPortal.dataset_config(name)
 
         directory_prefix = config.dig(:directory, :prefix) || RDFPortal.datasets_dir.join(name).to_s
         preserve = config[:preserve]
