@@ -4,6 +4,7 @@ require 'thor'
 
 module RDFPortal
   module CLI
+    require 'rdfportal/cli/convert'
     require 'rdfportal/cli/dataset'
     require 'rdfportal/cli/doctor'
     require 'rdfportal/cli/endpoint'
@@ -21,6 +22,9 @@ module RDFPortal
 
       desc 'setup [SUBCOMMAND]', 'Commands for setup', hide: true
       subcommand :setup, Setup::Commands
+
+      desc 'convert [SUBCOMMAND]', 'Commands for converter'
+      subcommand :convert, Convert
 
       desc 'dataset [SUBCOMMAND]', 'Commands for datasets'
       subcommand :dataset, Dataset

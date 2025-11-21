@@ -11,6 +11,7 @@ require 'pathname'
 require 'slack-notifier'
 require 'tmpdir'
 require 'uri'
+require 'zlib'
 
 module RDFPortal
   DATASETS_DIR_NAME = 'datasets'
@@ -20,6 +21,10 @@ module RDFPortal
 
   def self.home
     Pathname.new(Dir.home).join('.rdfportal')
+  end
+
+  def self.vendor_lib_dir
+    Pathname.new(__dir__).parent.join('vendor', 'lib')
   end
 
   require 'rdfportal/configuration'
