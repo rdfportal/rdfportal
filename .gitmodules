@@ -1,0 +1,3 @@
+[submodule "vendor/lib/ConvRDF"]
+	path = vendor/lib/ConvRDF
+	url = https://github.com/dbcls/ConvRDF.git
