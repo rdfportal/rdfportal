@@ -10,7 +10,4 @@
 # rspec failure tracking
 .rspec_status
 
-# Version lock file
-/Gemfile.lock
-
 .env
