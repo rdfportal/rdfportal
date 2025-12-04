@@ -213,6 +213,8 @@ module RDFPortal
           end
 
           def gspo_queries
+            RDFPortal.logger.info(self.class) { "Graph clause is #{graph_disabled? ? 'disabled' : 'enabled'}." }
+
             list = datasets.flat_map do |dataset|
               query = if graph_disabled?
                         SPARQL::GSPO::QUERY_0_N

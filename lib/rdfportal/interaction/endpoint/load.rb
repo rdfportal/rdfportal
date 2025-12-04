@@ -6,9 +6,11 @@ module RDFPortal
       require_relative 'base'
 
       class Load < Base
-        hash :load do
+        DEFAULT_PARALLEL_COUNT = 5
+
+        hash :load, default: {} do
           integer :parallel, default: DEFAULT_PARALLEL_COUNT
-          boolean :snapshots, default: false
+          boolean :snapshots, default: true
         end
 
         def execute
