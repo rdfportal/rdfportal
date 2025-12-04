@@ -268,6 +268,8 @@ module RDFPortal
           start_pos = log_file.exist? ? log_file.size : 0
 
           Timeout.timeout(timeout) do
+            sleep 1 until log_file.exist?
+
             File.open(log_file, 'r') do |f|
               f.seek(start_pos, IO::SEEK_SET)
 
