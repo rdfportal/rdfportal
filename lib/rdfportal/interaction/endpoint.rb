@@ -8,6 +8,7 @@ module RDFPortal
       require 'rdfportal/interaction/endpoint/publish'
       require 'rdfportal/interaction/endpoint/setup'
       require 'rdfportal/interaction/endpoint/start'
+      require 'rdfportal/interaction/endpoint/statistics'
       require 'rdfportal/interaction/endpoint/stop'
     end
   end

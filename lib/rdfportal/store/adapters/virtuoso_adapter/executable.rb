@@ -11,11 +11,20 @@ module RDFPortal
           extend Forwardable
           include ExternalCommand
 
-          def initialize(adapter)
+          def initialize(adapter, environment: Environment::LOAD)
             @adapter = adapter
+            @environment = environment
           end
 
           def_delegators :@adapter, :name, :repository, :options
+
+          def current_config(pid)
+            ret = run_cmd!('ps', '-p', pid.to_s, '-o', 'command=')
+
+            command = ret.out.strip.split(/\s+/)
+
+            command[command.find_index('+configfile') + 1]
+          end
 
           def configure_ini_file
             unless ini_file.exist?
@@ -85,7 +94,7 @@ module RDFPortal
           end
 
           def ini_file
-            working_dir.join('db', 'virtuoso.ini')
+            working_dir.join('db', @environment == Environment::STAT ? 'virtuoso_stat.ini' : 'virtuoso.ini')
           end
 
           private
@@ -112,11 +121,14 @@ module RDFPortal
               TempDatabase: {
                 DatabaseFile: working_dir.join('db', 'virtuoso-temp.db').to_s,
                 TransactionFile: working_dir.join('db', 'virtuoso-temp.trx').to_s
-              },
-              Parameters: {
-                DirsAllowed: dirs_allowed.join(', ')
               }
             }
+
+            if @environment == Environment::LOAD
+              required[:Parameters] = {
+                DirsAllowed: dirs_allowed.join(', ')
+              }
+            end
 
             return required unless (v = options.dig(:database, :settings)) && v.is_a?(Hash)
 

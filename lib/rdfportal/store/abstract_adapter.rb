@@ -54,6 +54,14 @@ module RDFPortal
       def publish(**options)
         raise NotImplementedError
       end
+
+      def environment(**options)
+        raise NotImplementedError
+      end
+
+      def statistics(**options)
+        raise NotImplementedError
+      end
     end
   end
 end

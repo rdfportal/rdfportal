@@ -72,10 +72,12 @@ module RDFPortal
       CACHE_FILE_NAME = '.cache.yml'
       DB_DIR_NAME = 'db'
       LOG_DIR_NAME = 'log'
+      STAT_DIR_NAME = 'stat'
 
       def prepare
         database_dir.mkpath
         log_dir.mkpath
+        stat_dir.mkpath
       end
 
       def cache(&)
@@ -95,6 +97,11 @@ module RDFPortal
       # @return [Pathname]
       def log_dir
         join LOG_DIR_NAME
+      end
+
+      # @return [Pathname]
+      def stat_dir
+        join STAT_DIR_NAME
       end
     end
 

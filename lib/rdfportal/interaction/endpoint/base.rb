@@ -29,6 +29,11 @@ module RDFPortal
 
         validates :'database.adapter', inclusion: { in: AVAILABLE_ADAPTERS }
 
+        def initialize(inputs = {})
+          super
+          @environment = Store::Environment::LOAD
+        end
+
         private
 
         # @return [Pathname]
@@ -51,7 +56,12 @@ module RDFPortal
         end
 
         def server
-          @server ||= Store::ServerManager.for(name, repository:, working_dir:, database:, datasets:)
+          @server ||= Store::ServerManager.for(name,
+                                               repository:,
+                                               working_dir:,
+                                               database:,
+                                               datasets:,
+                                               environment: @environment)
         end
       end
     end

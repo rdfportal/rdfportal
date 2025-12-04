@@ -8,6 +8,7 @@ module RDFPortal
       class VirtuosoAdapter < AbstractAdapter
         require 'rdfportal/store/adapters/virtuoso_adapter/connection'
         require 'rdfportal/store/adapters/virtuoso_adapter/executable'
+        require 'rdfportal/store/adapters/virtuoso_adapter/statistics'
 
         READY_TIMEOUT = 5 * 60
 
@@ -24,8 +25,10 @@ module RDFPortal
 
             new(name, options[:repository],
                 database: options[:database],
+                environment: options.fetch(:environment, Environment::LOAD),
                 datasets: options[:datasets],
                 load: options[:load],
+                stat: options[:stat],
                 host:,
                 port:,
                 user:,
@@ -167,12 +170,59 @@ module RDFPortal
           FileUtils.cp(repository.working.cache_file, dest)
         end
 
+        def environment(**options)
+          return unless pid_file.exist?
+
+          pid = Integer(File.read(pid_file).sub('VIRT_PID=', '').strip, exception: false)
+
+          conf = executable.current_config(pid)
+
+          case File.basename(conf)
+          when 'virtuoso.ini'
+            Environment::LOAD
+          when 'virtuoso_stat.ini'
+            Environment::STAT
+          else
+            nil
+          end
+        end
+
+        def statistics(**options)
+          statistics = Statistics.new(self)
+
+          gspo = options[:output_dir].join('gspo.yml.gz')
+          count = options[:output_dir].join('gspo_count.yml.gz')
+          stat = options[:output_dir].join('statistics.yml')
+          void = options[:output_dir].join('void_plus.ttl')
+          prefixes = Statistics::Vocab.prefixes
+
+          unless gspo.exist?
+            RDFPortal.logger.info(self.class) { 'Collecting GSPO...' }
+            statistics.gspo(gspo)
+          end
+
+          unless count.exist?
+            RDFPortal.logger.info(self.class) { 'Counting GSPO...' }
+            statistics.gspo_count(gspo, count)
+          end
+
+          unless stat.exist?
+            RDFPortal.logger.info(self.class) { 'Aggregating statistics...' }
+            File.write(stat, YAML.dump(statistics.statistics(count)))
+          end
+
+          unless void.exist?
+            RDFPortal.logger.info(self.class) { 'Generating VoID...' }
+            File.write(void, statistics.void(count).dump(:turtle, prefixes:))
+          end
+        end
+
         def connection
           @connection ||= Connection.new(self)
         end
 
         def executable
-          @executable ||= Executable.new(self)
+          @executable ||= Executable.new(self, environment: options[:environment])
         end
 
         private
@@ -212,18 +262,6 @@ module RDFPortal
           false
         rescue Errno::EPERM
           true
-        end
-
-        def wait_until_ready
-          t = Time.now + READY_TIMEOUT
-
-          until Time.now - t > READY_TIMEOUT
-            return true if running_by_socket?
-
-            sleep 1
-          end
-
-          raise Error, 'Virtuoso server did not get ready in time'
         end
 
         def wait_until_online(timeout: 300)

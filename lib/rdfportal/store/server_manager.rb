@@ -44,7 +44,9 @@ module RDFPortal
                      :before_load,
                      :exec_load,
                      :after_load,
-                     :publish
+                     :publish,
+                     :environment,
+                     :statistics
     end
   end
 end

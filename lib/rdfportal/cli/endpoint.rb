@@ -41,6 +41,7 @@ module RDFPortal
           end
         end
 
+        # ensure log directory exists
         repo.working.prepare
 
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('setup.log'))
@@ -62,6 +63,9 @@ module RDFPortal
         unless repo.working.exist?
           abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` first."
         end
+
+        # ensure log directory exists
+        repo.working.prepare
 
         RDFPortal.logger = if options[:pretend]
                              RDFPortal::Logger.new($stderr)
@@ -123,6 +127,9 @@ module RDFPortal
           abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` first."
         end
 
+        # ensure log directory exists
+        repo.working.prepare
+
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('publish.log'))
 
         action = Interaction::Endpoint::Publish.run(name:, **config)
@@ -134,14 +141,45 @@ module RDFPortal
         abort e.full_message
       end
 
+      desc 'statistics <NAME>', 'Publish database'
+
+      def statistics(name)
+        config = RDFPortal.endpoint_config(name, :stat)
+        repo = repository(name, config)
+
+        unless repo.working.exist?
+          abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` and `rdfportal endpoint load #{name}` first."
+        end
+
+        # ensure log directory exists
+        repo.working.prepare
+
+        RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('statistics.log'))
+
+        action = Interaction::Endpoint::Statistics.run(name:, **config)
+
+        raise(Error, action.errors.input_error_messages) unless action.valid?
+      rescue Error, ActiveInteraction::InvalidInteractionError => e
+        abort e.message
+      rescue StandardError => e
+        abort e.full_message
+      end
+
       desc 'console <NAME>', 'Start console for debugging'
+      option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
 
       def console(name, command = nil)
         RDFPortal.logger = RDFPortal::Logger.new($stderr, level: ::Logger::Severity::DEBUG)
 
-        config = RDFPortal.endpoint_config(name, :load)
+        environment = options.fetch(:environment, 'load').to_sym
+
+        unless Store::Environment.constants.any? { |c| Store::Environment.const_get(c) == environment.to_sym }
+          abort "Unknown environment: #{options[:environment]}"
+        end
+
+        config = RDFPortal.endpoint_config(name, environment)
         repository = repository(name, config)
-        server = Store::ServerManager.for(name, **config, repository:)
+        server = Store::ServerManager.for(name, **config, repository:, environment:)
 
         Kernel.define_method(:config) do
           config

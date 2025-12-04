@@ -163,6 +163,18 @@ module RDFPortal
             [graph ? "'#{graph}'" : 'null', predicate ? "'#{predicate}'" : 'null', reason ? "'#{reason}'" : "'All'"]
           end
 
+          def graphs
+            sparql = <<~SPARQL
+              SELECT DISTINCT ?graph {
+                GRAPH ?graph {
+                  ?s ?p ?o .
+                }
+              }
+            SPARQL
+
+            connection.fetch("SPARQL #{sparql.gsub(/\n\s*/, ' ').strip}").map { |x| x[:graph] }
+          end
+
           def odbc_config
             {
               adapter: 'odbc',
