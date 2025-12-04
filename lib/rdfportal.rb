@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'action_view/helpers/javascript_helper'
-require 'active_interaction'
 require 'active_support'
 require 'active_support/core_ext'
+require 'action_view/helpers/javascript_helper'
+require 'active_interaction'
 require 'digest/md5'
 require 'erb'
 require 'faktory'
