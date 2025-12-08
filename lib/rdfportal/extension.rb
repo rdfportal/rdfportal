@@ -130,7 +130,7 @@ class Integer
     h = (self / 60.0 / 60.0).to_i % 24
     d = (self / 60.0 / 60.0 / 24.0).to_i
 
-    "#{"#{d}d " if d.positive?}#{format('%<h>02d:%<m>02d:%<s>02d', { h:, m:, s: })}"
+    "#{"#{d}d " if d.positive?}#{format('%<h>02dh %<m>02dm %<s>02ds', { h:, m:, s: })}"
   end
 end
 
