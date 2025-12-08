@@ -20,17 +20,25 @@ module RDFPortal
           def_delegators :@adapter, :name, :repository, :options
 
           def statistics(gspo_count_input)
-            aggs = aggregate(gspo_count_input)
+            stat = Hash.new { |h, k| h[k] = {} }
 
-            aggs.transform_values do |stats|
-              {
-                total_count: stats.fetch(:total_entity_count, 0),
-                class_count: stats.fetch(:classes, []).size,
-                property_count: stats.fetch(:properties, []).size,
-                uniq_subject_count: stats.fetch(:distinct_subject_count, 0),
-                uniq_object_count: stats.fetch(:distinct_object_count, 0)
+            aggregate(gspo_count_input).each do |graph, stats|
+              dataset = datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
+
+              if graph == '__dummy__'
+                dataset = name
+              end
+
+              stat[dataset] = {
+                total_count: (stat.dig(dataset, :total_count) || 0) + stats.fetch(:total_entity_count, 0),
+                class_count: (stat.dig(dataset, :class_count) || 0) + stats.fetch(:classes, []).size,
+                property_count: (stat.dig(dataset, :property_count) || 0) + stats.fetch(:properties, []).size,
+                uniq_subject_count: (stat.dig(dataset, :uniq_subject_count) || 0) + stats.fetch(:distinct_subject_count, 0),
+                uniq_object_count: (stat.dig(dataset, :uniq_object_count) || 0) + stats.fetch(:distinct_object_count, 0)
               }
             end
+
+            stat
           end
 
           def aggregate(gspo_count_result)
