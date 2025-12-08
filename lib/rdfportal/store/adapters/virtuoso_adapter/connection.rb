@@ -64,6 +64,7 @@ module RDFPortal
           end
 
           def_delegators :@adapter, :name, :repository, :options
+          def_delegators :connection, :run, :fetch
 
           def shutdown
             connection.run('SHUTDOWN')
