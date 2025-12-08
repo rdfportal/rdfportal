@@ -12,7 +12,6 @@ module RDFPortal
           extend Forwardable
 
           require 'rdfportal/store/adapters/virtuoso_adapter/sparql'
-          include SPARQL
 
           def initialize(adapter)
             @adapter = adapter
@@ -20,26 +19,198 @@ module RDFPortal
 
           def_delegators :@adapter, :name, :repository, :options
 
-          def gspo(output)
-            run_queries_in_parallel(gspo_queries, output)
-          end
-
-          def gspo_count(gspo_input, output)
-            run_queries_in_parallel(gspo_count_queryies(gspo_input), output)
-          end
-
           def statistics(gspo_count_input)
             aggs = aggregate(gspo_count_input)
 
             aggs.transform_values do |stats|
               {
                 total_count: stats.fetch(:total_entity_count, 0),
-                class_count: stats.fetch(:class_partitions, []).size,
-                property_count: stats.fetch(:property_partitions, []).size,
+                class_count: stats.fetch(:classes, []).size,
+                property_count: stats.fetch(:properties, []).size,
                 uniq_subject_count: stats.fetch(:distinct_subject_count, 0),
                 uniq_object_count: stats.fetch(:distinct_object_count, 0)
               }
             end
+          end
+
+          def aggregate(gspo_count_result)
+            stats = Hash.new { |h, k| h[k] = {} }
+
+            File.open(gspo_count_result) do |f|
+              gz = (Zlib::GzipReader.new(f) if File.extname(gspo_count_result) == '.gz')
+
+              YAML.load_stream(gz || f) do |doc|
+                doc['result'].each do |row|
+                  graph = row['graph'] || row['_dummy']
+                  head = row['head']&.to_sym
+                  sclass = row['sclass']
+                  pred = row['pred']
+                  oclass = row['oclass']
+                  dtype = row['dtype']
+                  total = row['total'].to_i
+
+                  case head
+                  when :total_entity_count, :distinct_subject_count, :distinct_object_count
+                    stats[graph][head] = total
+                  when :distinct_class_entity_count
+                    (stats[graph][head] ||= []) << {
+                      class: sclass,
+                      total: total
+                    }
+                  when :pred_count
+                    (stats[graph][head] ||= []) << {
+                      predicate: pred,
+                      total: total
+                    }
+                  else
+                    (stats[graph][:classes] ||= Set.new).add(sclass)
+                    (stats[graph][:properties] ||= Set.new).add(pred)
+                    ((stats[graph][:class_relations] ||= {})[pred] ||= []) << {
+                      subject: sclass,
+                      predicate: pred,
+                      object: oclass,
+                      dtype: dtype,
+                      total: total
+                    }
+                  end
+                end
+              end
+            ensure
+              gz&.close
+            end
+
+            stats.deep_transform_values { |v| v.is_a?(Set) ? v.to_a : v }
+          end
+
+          def gspo(output)
+            RDFPortal.logger.info(self.class) { "Graph clause is #{graph_disabled? ? 'disabled' : 'enabled'}." }
+
+            list = datasets.flat_map do |dataset|
+              query = if graph_disabled?
+                        SPARQL::GSPO::QUERY_0_N
+                      else
+                        SPARQL::GSPO::QUERY_0_G.gsub('__graph__', "<#{dataset[:graph]}>")
+                      end
+
+              connection.fetch("SPARQL #{query}").flat_map do |row|
+                if graph_disabled?
+                  [
+                    SPARQL::GSPO::QUERY_1_N.gsub('__sclass__', "<#{row[:class]}>"),
+                    SPARQL::GSPO::QUERY_2_N.gsub('__oclass__', "<#{row[:class]}>"),
+                    SPARQL::GSPO::QUERY_3_N.gsub('__sclass__', "<#{row[:class]}>")
+                  ]
+                else
+                  [
+                    SPARQL::GSPO::QUERY_1_G.gsub('__graph__', "<#{dataset[:graph]}>")
+                                           .gsub('__sclass__', "<#{row[:class]}>"),
+                    SPARQL::GSPO::QUERY_2_G.gsub('__graph__', "<#{dataset[:graph]}>")
+                                           .gsub('__oclass__', "<#{row[:class]}>"),
+                    SPARQL::GSPO::QUERY_3_G.gsub('__graph__', "<#{dataset[:graph]}>")
+                                           .gsub('__sclass__', "<#{row[:class]}>")
+                  ]
+                end
+              end
+            end
+
+            run_queries_in_parallel(sequence(list), output)
+          end
+
+          def gspo_count(gspo_input, output)
+            list = []
+
+            File.open(gspo_input) do |f|
+              gz = (Zlib::GzipReader.new(f) if File.extname(gspo_input) == '.gz')
+
+              graph_set = Set.new
+              graph_class_set = Set.new
+              graph_pred_set = Set.new
+
+              YAML.load_stream(gz || f) do |doc|
+                query = doc['query']
+                is_dtype = query.include?('?dtype')
+
+                doc['result'].each do |row|
+                  next unless (graph = row['graph'] || row['_dummy'])
+
+                  if graph_set.add?(graph)
+                    list.concat(
+                      if graph.start_with?('__dummy__')
+                        [
+                          SPARQL::GSPO_COUNT::TOTAL_QN,
+                          SPARQL::GSPO_COUNT::TOTAL_DS_QN,
+                          SPARQL::GSPO_COUNT::TOTAL_DO_QN
+                        ]
+                      else
+                        [
+                          SPARQL::GSPO_COUNT::TOTAL_QG,
+                          SPARQL::GSPO_COUNT::TOTAL_DS_QG,
+                          SPARQL::GSPO_COUNT::TOTAL_DO_QG
+                        ].map { |q| q.gsub('__graph__', "<#{graph}>") }
+                      end
+                    )
+                  end
+
+                  sclass = row['sclass']
+                  pred = row['pred']
+
+                  if graph_class_set.add?([graph, sclass])
+                    list << if graph.start_with?('__dummy__')
+                              SPARQL::GSPO_COUNT::CLASS_QN.gsub('__sclass__', "<#{sclass}>")
+                            else
+                              SPARQL::GSPO_COUNT::CLASS_QG.gsub('__graph__', "<#{graph}>")
+                                                          .gsub('__sclass__', "<#{sclass}>")
+                            end
+                  end
+
+                  if graph_pred_set.add?([graph, pred])
+                    list << if graph.start_with?('__dummy__')
+                              SPARQL::GSPO_COUNT::PRED_QN.gsub('__pred__', "<#{pred}>")
+                            else
+                              SPARQL::GSPO_COUNT::PRED_QG.gsub('__graph__', "<#{graph}>")
+                                                         .gsub('__pred__', "<#{pred}>")
+                            end
+                  end
+
+                  list << if is_dtype
+                            if graph.start_with?('__dummy__')
+                              if (dtype = row['dtype']).present?
+                                SPARQL::GSPO_COUNT::QUERY_DN.gsub('__sclass__', "<#{sclass}>")
+                                                            .gsub('__pred__', "<#{pred}>")
+                                                            .gsub('__dtype__', "<#{dtype}>")
+                              else
+                                SPARQL::GSPO_COUNT::QUERY_DN_NT.gsub('__sclass__', "<#{sclass}>")
+                                                               .gsub('__pred__', "<#{pred}>")
+                              end
+                            elsif (dtype = row['dtype']).present?
+                              SPARQL::GSPO_COUNT::QUERY_DG.gsub('__graph__', "<#{graph}>")
+                                                          .gsub('__sclass__', "<#{sclass}>")
+                                                          .gsub('__pred__', "<#{pred}>")
+                                                          .gsub('__dtype__', "<#{dtype}>")
+                            else
+                              SPARQL::GSPO_COUNT::QUERY_DG_NT.gsub('__graph__', "<#{graph}>")
+                                                             .gsub('__sclass__', "<#{sclass}>")
+                                                             .gsub('__pred__', "<#{pred}>")
+                            end
+                          else
+                            oclass = row['oclass']
+                            if graph.start_with?('__dummy__')
+                              SPARQL::GSPO_COUNT::QUERY_CN.gsub('__sclass__', "<#{sclass}>")
+                                                          .gsub('__pred__', "<#{pred}>")
+                                                          .gsub('__oclass__', "<#{oclass}>")
+                            else
+                              SPARQL::GSPO_COUNT::QUERY_CG.gsub('__graph__', "<#{graph}>")
+                                                          .gsub('__sclass__', "<#{sclass}>")
+                                                          .gsub('__pred__', "<#{pred}>")
+                                                          .gsub('__oclass__', "<#{oclass}>")
+                            end
+                          end
+                end
+              end
+            ensure
+              gz&.close
+            end
+
+            run_queries_in_parallel(sequence(list), output)
           end
 
           module Vocab
@@ -163,186 +334,6 @@ module RDFPortal
             end
           end
 
-          def aggregate(gspo_count_result)
-            stats = Hash.new { |h, k| h[k] = {} }
-
-            File.open(gspo_count_result) do |f|
-              gz = (Zlib::GzipReader.new(f) if File.extname(gspo_count_result) == '.gz')
-
-              YAML.load_stream(gz || f) do |doc|
-                doc['result'].each do |row|
-                  graph = row['graph'] || row['_dummy']
-                  head = row['head']&.to_sym
-                  sclass = row['sclass']
-                  pred = row['pred']
-                  oclass = row['oclass']
-                  dtype = row['dtype']
-                  total = row['total'].to_i
-
-                  case head
-                  when :total_entity_count, :distinct_subject_count, :distinct_object_count
-                    stats[graph][head] = total
-                  when :distinct_class_entity_count
-                    (stats[graph][head] ||= []) << {
-                      class: sclass,
-                      total: total
-                    }
-                  when :pred_count
-                    (stats[graph][head] ||= []) << {
-                      predicate: pred,
-                      total: total
-                    }
-                  else
-                    (stats[graph][:classes] ||= Set.new).add(sclass)
-                    (stats[graph][:properties] ||= Set.new).add(pred)
-                    ((stats[graph][:class_relations] ||= {})[pred] ||= []) << {
-                      subject: sclass,
-                      predicate: pred,
-                      object: oclass,
-                      dtype: dtype,
-                      total: total
-                    }
-                  end
-                end
-              end
-            ensure
-              gz&.close
-            end
-
-            stats.deep_transform_values { |v| v.is_a?(Set) ? v.to_a : v }
-          end
-
-          def gspo_queries
-            RDFPortal.logger.info(self.class) { "Graph clause is #{graph_disabled? ? 'disabled' : 'enabled'}." }
-
-            list = datasets.flat_map do |dataset|
-              query = if graph_disabled?
-                        SPARQL::GSPO::QUERY_0_N
-                      else
-                        SPARQL::GSPO::QUERY_0_G.gsub('__graph__', "<#{dataset[:graph]}>")
-                      end
-
-              connection.fetch("SPARQL #{query}").flat_map do |row|
-                if graph_disabled?
-                  [
-                    SPARQL::GSPO::QUERY_1_N.gsub('__sclass__', "<#{row[:class]}>"),
-                    SPARQL::GSPO::QUERY_2_N.gsub('__oclass__', "<#{row[:class]}>"),
-                    SPARQL::GSPO::QUERY_3_N.gsub('__sclass__', "<#{row[:class]}>")
-                  ]
-                else
-                  [
-                    SPARQL::GSPO::QUERY_1_G.gsub('__graph__', "<#{dataset[:graph]}>")
-                                           .gsub('__sclass__', "<#{row[:class]}>"),
-                    SPARQL::GSPO::QUERY_2_G.gsub('__graph__', "<#{dataset[:graph]}>")
-                                           .gsub('__oclass__', "<#{row[:class]}>"),
-                    SPARQL::GSPO::QUERY_3_G.gsub('__graph__', "<#{dataset[:graph]}>")
-                                           .gsub('__sclass__', "<#{row[:class]}>")
-                  ]
-                end
-              end
-            end
-
-            sequence(list)
-          end
-
-          def gspo_count_queryies(gspo_result)
-            list = []
-
-            File.open(gspo_result) do |f|
-              gz = (Zlib::GzipReader.new(f) if File.extname(gspo_result) == '.gz')
-
-              graph_set = Set.new
-              graph_class_set = Set.new
-              graph_pred_set = Set.new
-
-              YAML.load_stream(gz || f) do |doc|
-                query = doc['query']
-                is_dtype = query.include?('?dtype')
-
-                doc['result'].each do |row|
-                  next unless (graph = row['graph'] || row['_dummy'])
-
-                  list.concat(total_related_stats(graph)) if graph_set.add?(graph)
-
-                  sclass = row['sclass']
-                  pred = row['pred']
-
-                  if graph_class_set.add?([graph, sclass])
-                    list << if graph.start_with?('__dummy__')
-                              SPARQL::GSPO_COUNT::CLASS_QN.gsub('__sclass__', "<#{sclass}>")
-                            else
-                              SPARQL::GSPO_COUNT::CLASS_QG.gsub('__graph__', "<#{graph}>")
-                                                          .gsub('__sclass__', "<#{sclass}>")
-                            end
-                  end
-
-                  if graph_pred_set.add?([graph, pred])
-                    list << if graph.start_with?('__dummy__')
-                              SPARQL::GSPO_COUNT::PRED_QN.gsub('__pred__', "<#{pred}>")
-                            else
-                              SPARQL::GSPO_COUNT::PRED_QG.gsub('__graph__', "<#{graph}>")
-                                                         .gsub('__pred__', "<#{pred}>")
-                            end
-                  end
-
-                  list << if is_dtype
-                            if graph.start_with?('__dummy__')
-                              if (dtype = row['dtype']).present?
-                                SPARQL::GSPO_COUNT::QUERY_DN.gsub('__sclass__', "<#{sclass}>")
-                                                            .gsub('__pred__', "<#{pred}>")
-                                                            .gsub('__dtype__', "<#{dtype}>")
-                              else
-                                SPARQL::GSPO_COUNT::QUERY_DN_NT.gsub('__sclass__', "<#{sclass}>")
-                                                               .gsub('__pred__', "<#{pred}>")
-                              end
-                            elsif (dtype = row['dtype']).present?
-                              SPARQL::GSPO_COUNT::QUERY_DG.gsub('__graph__', "<#{graph}>")
-                                                          .gsub('__sclass__', "<#{sclass}>")
-                                                          .gsub('__pred__', "<#{pred}>")
-                                                          .gsub('__dtype__', "<#{dtype}>")
-                            else
-                              SPARQL::GSPO_COUNT::QUERY_DG_NT.gsub('__graph__', "<#{graph}>")
-                                                             .gsub('__sclass__', "<#{sclass}>")
-                                                             .gsub('__pred__', "<#{pred}>")
-                            end
-                          else
-                            oclass = row['oclass']
-                            if graph.start_with?('__dummy__')
-                              SPARQL::GSPO_COUNT::QUERY_CN.gsub('__sclass__', "<#{sclass}>")
-                                                          .gsub('__pred__', "<#{pred}>")
-                                                          .gsub('__oclass__', "<#{oclass}>")
-                            else
-                              SPARQL::GSPO_COUNT::QUERY_CG.gsub('__graph__', "<#{graph}>")
-                                                          .gsub('__sclass__', "<#{sclass}>")
-                                                          .gsub('__pred__', "<#{pred}>")
-                                                          .gsub('__oclass__', "<#{oclass}>")
-                            end
-                          end
-                end
-              end
-            ensure
-              gz&.close
-            end
-
-            sequence(list)
-          end
-
-          def total_related_stats(graph)
-            if graph.start_with?('__dummy__')
-              [
-                SPARQL::GSPO_COUNT::TOTAL_QN,
-                SPARQL::GSPO_COUNT::TOTAL_DS_QN,
-                SPARQL::GSPO_COUNT::TOTAL_DO_QN
-              ]
-            else
-              [
-                SPARQL::GSPO_COUNT::TOTAL_QG,
-                SPARQL::GSPO_COUNT::TOTAL_DS_QG,
-                SPARQL::GSPO_COUNT::TOTAL_DO_QG
-              ].map { |q| q.gsub('__graph__', "<#{graph}>") }
-            end
-          end
-
           def datasets
             return @datasets if @datasets
 
@@ -382,7 +373,7 @@ module RDFPortal
 
           def sequence(list)
             list.map.with_index do |query, i|
-              replace = "BIND('#{i + 1}/#{list.size}' AS ?seq) }"
+              replace = "  BIND('#{i + 1}/#{list.size}' AS ?seq)\n}"
               query.reverse.sub('}', replace.reverse).reverse
             end
           end
@@ -424,14 +415,18 @@ module RDFPortal
                   loop do
                     break if (query = queue.pop) == THREAD_TERMINATE_SIGNAL
 
-                    result = begin
-                               connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
-                             rescue StandardError => e
-                               RDFPortal.logger.error(self.class) { e.full_message }
-                               [{ error: e.full_message }]
-                             end
+                    result = nil
 
-                    doc = { query:, result: }.deep_stringify_keys.to_yaml
+                    t = Benchmark.realtime do
+                      result = begin
+                                 connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
+                               rescue StandardError => e
+                                 RDFPortal.logger.error(self.class) { e.full_message }
+                                 [{ error: e.full_message }]
+                               end
+                    end
+
+                    doc = { query:, elapsed: t.readable_duration, result: }.deep_stringify_keys.to_yaml
 
                     write_buffer << doc
                   end
