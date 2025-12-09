@@ -189,8 +189,7 @@ module RDFPortal
               'Driver' => self.class.find_driver,
               'Host' => "#{options[:host]}:#{options[:port]}",
               'UID' => options[:user],
-              'PWD' => options[:password],
-              'NoWCHAR' => '1'
+              'PWD' => options[:password]
             }.map { |k, v| "#{k}=#{v}" }.join(';')
           end
 
