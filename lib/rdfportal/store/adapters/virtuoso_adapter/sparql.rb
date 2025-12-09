@@ -115,7 +115,7 @@ module RDFPortal
 
             module GSPO_COUNT
               TOTAL_QG = <<~SPARQL
-                SELECT ?graph ("total_entity_count" AS ?head) (COUNT(*) AS ?total) {
+                SELECT ?graph ("total_entity_count" AS ?head) (STR(COUNT(*)) AS ?total) {
                   VALUES ?graph { __graph__ }
                   GRAPH ?graph {
                     ?s ?p ?o .
@@ -124,7 +124,7 @@ module RDFPortal
               SPARQL
 
               TOTAL_QN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ("total_entity_count" AS ?head) (COUNT(*) AS ?total)
+                SELECT #{DUMMY_HEAD} ("total_entity_count" AS ?head) (STR(COUNT(*)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   ?s ?p ?o .
@@ -132,7 +132,7 @@ module RDFPortal
               SPARQL
 
               TOTAL_DS_QG = <<~SPARQL
-                SELECT ?graph ("distinct_subject_count" AS ?head) (COUNT(DISTINCT ?s) AS ?total) {
+                SELECT ?graph ("distinct_subject_count" AS ?head) (STR(COUNT(DISTINCT ?s)) AS ?total) {
                   VALUES ?graph { __graph__ }
                   GRAPH ?graph {
                     ?s ?p ?o .
@@ -141,7 +141,7 @@ module RDFPortal
               SPARQL
 
               TOTAL_DS_QN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ("distinct_subject_count" AS ?head) (COUNT(DISTINCT ?s) AS ?total)
+                SELECT #{DUMMY_HEAD} ("distinct_subject_count" AS ?head) (STR(COUNT(DISTINCT ?s)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   ?s ?p ?o .
@@ -149,7 +149,7 @@ module RDFPortal
               SPARQL
 
               TOTAL_DO_QG = <<~SPARQL
-                SELECT ?graph ("distinct_object_count" AS ?head) (COUNT(DISTINCT ?o) AS ?total) {
+                SELECT ?graph ("distinct_object_count" AS ?head) (STR(COUNT(DISTINCT ?o)) AS ?total) {
                   VALUES ?graph { __graph__ }
                   GRAPH ?graph {
                     ?s ?p ?o .
@@ -158,7 +158,7 @@ module RDFPortal
               SPARQL
 
               TOTAL_DO_QN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ("distinct_object_count" AS ?head) (COUNT(DISTINCT ?o) AS ?total)
+                SELECT #{DUMMY_HEAD} ("distinct_object_count" AS ?head) (STR(COUNT(DISTINCT ?o)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   ?s ?p ?o .
@@ -166,7 +166,7 @@ module RDFPortal
               SPARQL
 
               CLASS_QG = <<~SPARQL
-                SELECT ?graph ("distinct_class_entity_count" AS ?head) ?sclass (COUNT(DISTINCT ?s) AS ?total) {
+                SELECT ?graph ("distinct_class_entity_count" AS ?head) ?sclass (STR(COUNT(DISTINCT ?s)) AS ?total) {
                   VALUES (?graph ?sclass) { ( __graph__ __sclass__ ) }
                   GRAPH ?graph {
                     ?s a ?sclass .
@@ -175,7 +175,7 @@ module RDFPortal
               SPARQL
 
               CLASS_QN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ("distinct_class_entity_count" AS ?head) ?sclass (COUNT(DISTINCT ?s) AS ?total)
+                SELECT #{DUMMY_HEAD} ("distinct_class_entity_count" AS ?head) ?sclass (STR(COUNT(DISTINCT ?s)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   VALUES ?sclass { __sclass__ }
@@ -184,7 +184,7 @@ module RDFPortal
               SPARQL
 
               PRED_QG = <<~SPARQL
-                SELECT ?graph ("pred_count" AS ?head) ?pred (COUNT(?pred) AS ?total) {
+                SELECT ?graph ("pred_count" AS ?head) ?pred (STR(COUNT(?pred)) AS ?total) {
                   VALUES (?graph ?pred) { ( __graph__ __pred__ ) }
                   GRAPH ?graph {
                     ?s ?pred ?o .
@@ -193,7 +193,7 @@ module RDFPortal
               SPARQL
 
               PRED_QN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ("pred_count" AS ?head) ?pred (COUNT(?pred) AS ?total)
+                SELECT #{DUMMY_HEAD} ("pred_count" AS ?head) ?pred (STR(COUNT(?pred)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   VALUES ?pred { __pred__ }
@@ -202,7 +202,7 @@ module RDFPortal
               SPARQL
 
               QUERY_CG = <<~SPARQL
-                SELECT ?graph ?sclass ?pred ?oclass (COUNT(?pred) AS ?total) {
+                SELECT ?graph ?sclass ?pred ?oclass (STR(COUNT(?pred)) AS ?total) {
                   VALUES (?graph ?sclass ?pred ?oclass) { ( __graph__ __sclass__ __pred__ __oclass__ ) }
                   GRAPH ?graph {
                     [ a ?sclass ] ?pred [ a ?oclass ] .
@@ -212,7 +212,7 @@ module RDFPortal
               SPARQL
 
               QUERY_CN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ?sclass ?pred ?oclass (COUNT(?pred) AS ?total)
+                SELECT #{DUMMY_HEAD} ?sclass ?pred ?oclass (STR(COUNT(?pred)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   VALUES (?sclass ?pred ?oclass) { ( __sclass__ __pred__ __oclass__ ) }
@@ -222,7 +222,7 @@ module RDFPortal
               SPARQL
 
               QUERY_DG = <<~SPARQL
-                SELECT ?graph ?sclass ?pred ?dtype (COUNT(?pred) AS ?total) {
+                SELECT ?graph ?sclass ?pred ?dtype (STR(COUNT(?pred)) AS ?total) {
                   VALUES (?graph ?sclass ?pred ?dtype) { ( __graph__ __sclass__ __pred__ __dtype__ ) }
                   GRAPH ?graph {
                     [ a ?sclass ] ?pred ?obj .
@@ -233,7 +233,7 @@ module RDFPortal
               SPARQL
 
               QUERY_DN = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ?sclass ?pred ?dtype (COUNT(?pred) AS ?total)
+                SELECT #{DUMMY_HEAD} ?sclass ?pred ?dtype (STR(COUNT(?pred)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   VALUES (?sclass ?pred ?dtype) { ( __sclass__ __pred__ __dtype__ ) }
@@ -244,7 +244,7 @@ module RDFPortal
               SPARQL
 
               QUERY_DG_NT = <<~SPARQL
-                SELECT ?graph ?sclass ?pred ("None" AS ?dtype) (COUNT(?pred) AS ?total) {
+                SELECT ?graph ?sclass ?pred ("None" AS ?dtype) (STR(COUNT(?pred)) AS ?total) {
                   VALUES (?graph ?sclass ?pred) { ( __graph__ __sclass__ __pred__ ) }
                   GRAPH ?graph {
                     [ a ?sclass ] ?pred ?obj .
@@ -255,7 +255,7 @@ module RDFPortal
               SPARQL
 
               QUERY_DN_NT = <<~SPARQL.freeze
-                SELECT #{DUMMY_HEAD} ?sclass ?pred ("None" AS ?dtype) (COUNT(?pred) AS ?total)
+                SELECT #{DUMMY_HEAD} ?sclass ?pred ("None" AS ?dtype) (STR(COUNT(?pred)) AS ?total)
                 #{EXCLUDE_GRAPH.strip}
                 {
                   VALUES (?sclass ?pred) { ( __sclass__ __pred__ ) }

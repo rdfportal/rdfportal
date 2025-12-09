@@ -20,25 +20,22 @@ module RDFPortal
           def_delegators :@adapter, :name, :repository, :options
 
           def statistics(gspo_count_input)
-            stat = Hash.new { |h, k| h[k] = {} }
+            statistics = Hash.new { |h, k| h[k] = {} }
 
-            aggregate(gspo_count_input).each do |graph, stats|
-              dataset = datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
+            aggregate(gspo_count_input).each do |graph, stat|
+              dataset = graph == '__dummy__' ? name : datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
 
-              if graph == '__dummy__'
-                dataset = name
-              end
-
-              stat[dataset] = {
-                total_count: (stat.dig(dataset, :total_count) || 0) + stats.fetch(:total_entity_count, 0),
-                class_count: (stat.dig(dataset, :class_count) || 0) + stats.fetch(:classes, []).size,
-                property_count: (stat.dig(dataset, :property_count) || 0) + stats.fetch(:properties, []).size,
-                uniq_subject_count: (stat.dig(dataset, :uniq_subject_count) || 0) + stats.fetch(:distinct_subject_count, 0),
-                uniq_object_count: (stat.dig(dataset, :uniq_object_count) || 0) + stats.fetch(:distinct_object_count, 0)
+              s = (statistics[dataset] ||= Hash.new(0))
+              statistics[dataset] = {
+                total_count: s[:total_count] + stat[:total_entity_count].to_i,
+                class_count: s[:class_count] + stat.fetch(:classes, []).size,
+                property_count: s[:property_count] + stat.fetch(:properties, []).size,
+                uniq_subject_count: s[:uniq_subject_count] + stat[:distinct_subject_count].to_i,
+                uniq_object_count: s[:uniq_object_count] + stat[:distinct_object_count].to_i
               }
             end
 
-            stat
+            statistics
           end
 
           def aggregate(gspo_count_result)
