@@ -20,19 +20,29 @@ module RDFPortal
           def_delegators :@adapter, :name, :repository, :options
 
           def statistics(gspo_count_input)
-            statistics = Hash.new { |h, k| h[k] = {} }
+            statistics = Hash.new do |hash, key|
+              hash[key] = {
+                total_count: 0,
+                uniq_subject_count: 0,
+                uniq_object_count: 0,
+                classes: Set.new,
+                properties: Set.new
+              }
+            end
 
             aggregate(gspo_count_input).each do |graph, stat|
               dataset = graph == '__dummy__' ? name : datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
 
-              s = (statistics[dataset] ||= Hash.new(0))
-              statistics[dataset] = {
-                total_count: s[:total_count] + stat[:total_entity_count].to_i,
-                class_count: s[:class_count] + stat.fetch(:classes, []).size,
-                property_count: s[:property_count] + stat.fetch(:properties, []).size,
-                uniq_subject_count: s[:uniq_subject_count] + stat[:distinct_subject_count].to_i,
-                uniq_object_count: s[:uniq_object_count] + stat[:distinct_object_count].to_i
-              }
+              statistics[dataset][:total_count] += stat[:total_entity_count].to_i
+              statistics[dataset][:uniq_subject_count] += stat[:distinct_subject_count].to_i
+              statistics[dataset][:uniq_object_count] += stat[:distinct_object_count].to_i
+              statistics[dataset][:classes].merge(stat.fetch(:classes, []))
+              statistics[dataset][:properties].merge(stat.fetch(:properties, []))
+            end
+
+            statistics.each do |_, stat|
+              stat[:class_count] = stat.delete(:classes).size
+              stat[:property_count] = stat.delete(:properties).size
             end
 
             statistics
