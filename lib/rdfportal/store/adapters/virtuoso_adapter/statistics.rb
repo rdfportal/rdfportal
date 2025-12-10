@@ -438,7 +438,7 @@ module RDFPortal
                     t = Benchmark.realtime do
                       result = begin
                                  connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
-                               rescue DatabaseDisconnectError => e
+                               rescue Sequel::DatabaseDisconnectError => e
                                  RDFPortal.logger.warn(self.class) { "#{e.message}, retrying..." }
                                  if (retry_count += 1) <= 3
                                    sleep 2**retry_count
