@@ -432,11 +432,19 @@ module RDFPortal
                   loop do
                     break if (query = queue.pop) == THREAD_TERMINATE_SIGNAL
 
+                    retry_count = 0
                     result = nil
 
                     t = Benchmark.realtime do
                       result = begin
                                  connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
+                               rescue DatabaseDisconnectError => e
+                                 RDFPortal.logger.warn(self.class) { "#{e.message}, retrying..." }
+                                 if (retry_count += 1) <= 3
+                                   sleep 2**retry_count
+                                   retry
+                                 end
+                                 raise e
                                rescue StandardError => e
                                  RDFPortal.logger.error(self.class) { e.full_message }
                                  [{ error: e.full_message }]
