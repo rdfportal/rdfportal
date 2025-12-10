@@ -31,7 +31,11 @@ module RDFPortal
             end
 
             aggregate(gspo_count_input).each do |graph, stat|
-              dataset = graph == '__dummy__' ? name : datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
+              dataset = if graph_disabled?
+                          name
+                        else
+                          datasets.find { |x| x[:graph] == graph }&.fetch(:name) || graph
+                        end
 
               statistics[dataset][:total_count] += stat[:total_entity_count].to_i
               statistics[dataset][:uniq_subject_count] += stat[:distinct_subject_count].to_i
@@ -149,7 +153,7 @@ module RDFPortal
 
                   if graph_set.add?(graph)
                     list.concat(
-                      if graph.start_with?('__dummy__')
+                      if graph_disabled?
                         [
                           SPARQL::GSPO_COUNT::TOTAL_QN,
                           SPARQL::GSPO_COUNT::TOTAL_DS_QN,
@@ -169,7 +173,7 @@ module RDFPortal
                   pred = row['pred']
 
                   if graph_class_set.add?([graph, sclass])
-                    list << if graph.start_with?('__dummy__')
+                    list << if graph_disabled?
                               SPARQL::GSPO_COUNT::CLASS_QN.gsub('__sclass__', "<#{sclass}>")
                             else
                               SPARQL::GSPO_COUNT::CLASS_QG.gsub('__graph__', "<#{graph}>")
@@ -178,7 +182,7 @@ module RDFPortal
                   end
 
                   if graph_pred_set.add?([graph, pred])
-                    list << if graph.start_with?('__dummy__')
+                    list << if graph_disabled?
                               SPARQL::GSPO_COUNT::PRED_QN.gsub('__pred__', "<#{pred}>")
                             else
                               SPARQL::GSPO_COUNT::PRED_QG.gsub('__graph__', "<#{graph}>")
@@ -187,7 +191,7 @@ module RDFPortal
                   end
 
                   list << if is_dtype
-                            if graph.start_with?('__dummy__')
+                            if graph_disabled?
                               if (dtype = row['dtype']).present?
                                 SPARQL::GSPO_COUNT::QUERY_DN.gsub('__sclass__', "<#{sclass}>")
                                                             .gsub('__pred__', "<#{pred}>")
@@ -208,7 +212,7 @@ module RDFPortal
                             end
                           else
                             oclass = row['oclass']
-                            if graph.start_with?('__dummy__')
+                            if graph_disabled?
                               SPARQL::GSPO_COUNT::QUERY_CN.gsub('__sclass__', "<#{sclass}>")
                                                           .gsub('__pred__', "<#{pred}>")
                                                           .gsub('__oclass__', "<#{oclass}>")
@@ -248,8 +252,6 @@ module RDFPortal
           SPARQL_DEFAULT_GRAPH = Vocab::NS['sparql-default-graph']
 
           def void(gspo_count_input)
-            aggs = aggregate(gspo_count_input)
-
             RDF::Graph.new do |g|
               svcroot = Vocab::NS[:svcroot]
               root = Vocab::NS[:root]
@@ -262,16 +264,16 @@ module RDFPortal
               g << [crawl_log, RDF.type, Vocab::SBM[:CrawlLog]]
               g << [crawl_log, Vocab::SBM[:crawlStartTime], RDF::Literal::DateTime.new(DateTime.now)]
 
-              aggs.each do |graph_name, stats|
-                graph = Vocab::NS[hashed(graph_name)]
+              aggregate(gspo_count_input).each do |graph, stat|
+                graph = Vocab::NS[hashed(graph)]
 
-                if graph_name.start_with?('http')
+                if graph.start_with?('http')
                   g << [root, RDF::Vocab::SD[:defaultGraph], SPARQL_DEFAULT_GRAPH]
                   g << [SPARQL_DEFAULT_GRAPH, RDF.type, RDF::Vocab::SD[:Graph]]
 
                   g << [root, RDF::Vocab::SD[:namedGraph], graph]
                   g << [graph, RDF.type, RDF::Vocab::SD[:NamedGraph]]
-                  g << [graph, RDF::Vocab::SD.name, RDF::URI(graph_name)]
+                  g << [graph, RDF::Vocab::SD.name, RDF::URI(graph)]
                 else
                   g << [root, RDF::Vocab::SD[:defaultGraph], graph]
                   g << [graph, RDF.type, RDF::Vocab::SD[:Graph]]
@@ -286,22 +288,22 @@ module RDFPortal
                 g << [graph, RDF.type, RDF::Vocab::SD[:Graph]]
                 g << [graph, RDF.type, RDF::Vocab::VOID[:Dataset]]
 
-                if (v = stats[:total_entity_count])
+                if (v = stat[:total_entity_count])
                   g << [graph, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(v.to_i)]
                 end
-                if (v = stats[:distinct_subject_count])
+                if (v = stat[:distinct_subject_count])
                   g << [graph, RDF::Vocab::VOID[:distinctSubjects], RDF::Literal::Integer.new(v.to_i)]
                 end
-                if (v = stats[:distinct_object_count])
+                if (v = stat[:distinct_object_count])
                   g << [graph, RDF::Vocab::VOID[:distinctObjects], RDF::Literal::Integer.new(v.to_i)]
                 end
 
-                if (classes = stats[:classes]).present?
+                if (classes = stat[:classes]).present?
                   g << [graph, RDF::Vocab::VOID[:classes], RDF::Literal::Integer.new(classes.size)]
 
                   classes.each do |klass|
-                    dataset = Vocab::NS[hashed(graph_name, klass, prefix: 'Class:')]
-                    c = stats[:distinct_class_entity_count].find { |x| x[:class] == klass }&.fetch(:total) || 0
+                    dataset = Vocab::NS[hashed(graph, klass, prefix: 'Class:')]
+                    c = stat[:distinct_class_entity_count].find { |x| x[:class] == klass }&.fetch(:total) || 0
 
                     g << [graph, RDF::Vocab::VOID[:classPartition], dataset]
                     g << [dataset, RDF.type, RDF::Vocab::VOID[:Dataset]]
@@ -310,12 +312,12 @@ module RDFPortal
                   end
                 end
 
-                if (properties = stats[:properties]).present?
+                if (properties = stat[:properties]).present?
                   g << [graph, RDF::Vocab::VOID[:properties], RDF::Literal::Integer.new(properties.size)]
 
                   properties.each do |property|
-                    dataset = Vocab::NS[hashed(graph_name, property, prefix: 'Property:')]
-                    c = stats[:pred_count].find { |x| x[:predicate] == property }&.fetch(:total) || 0
+                    dataset = Vocab::NS[hashed(graph, property, prefix: 'Property:')]
+                    c = stat[:pred_count].find { |x| x[:predicate] == property }&.fetch(:total) || 0
 
                     g << [graph, RDF::Vocab::VOID[:propertyPartition], dataset]
                     g << [dataset, RDF.type, RDF::Vocab::VOID[:Dataset]]
@@ -324,16 +326,16 @@ module RDFPortal
                   end
                 end
 
-                Array(stats[:class_relations]).each do |pred, xs|
-                  dataset = Vocab::NS[hashed(graph_name, pred, prefix: 'Property:')]
+                Array(stat[:class_relations]).each do |pred, xs|
+                  dataset = Vocab::NS[hashed(graph, pred, prefix: 'Property:')]
 
                   xs.each do |x|
                     name = "#{x[:subject]}#{x[:predicate]}#{x[:object].presence || x[:dtype]}"
-                    class_relation = Vocab::NS[hashed(graph_name, name, prefix: 'ClassRels:')]
+                    class_relation = Vocab::NS[hashed(graph, name, prefix: 'ClassRels:')]
 
                     g << [dataset, Vocab::SBM[:classRelation], class_relation]
                     g << [class_relation, RDF.type, Vocab::SBM[:ClassRelation]]
-                    g << [class_relation, Vocab::SBM[:hashing], RDF::Literal.new("ClassRels:#{graph_name}#{name}", datatype: RDF::XSD.string)]
+                    g << [class_relation, Vocab::SBM[:hashing], RDF::Literal.new("ClassRels:#{graph}#{name}", datatype: RDF::XSD.string)]
                     g << [class_relation, Vocab::SBM[:subjectClass], RDF::URI(x[:subject])]
 
                     g << if x[:dtype].present?
@@ -381,7 +383,7 @@ module RDFPortal
           end
 
           def hashed(graph, name = nil, prefix: nil)
-            graph = "__dummy__#{self.name}" if graph.start_with?('__dummy__')
+            graph = "__dummy__#{self.name}" if graph_disabled?
 
             Digest::MD5.hexdigest("#{prefix}#{graph}#{name}")
           end
