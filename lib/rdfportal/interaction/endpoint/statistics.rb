@@ -6,11 +6,6 @@ module RDFPortal
       require_relative 'base'
 
       class Statistics < Base
-        hash :stat, default: {} do
-          boolean :graph, default: true
-          string :endpoint, default: nil
-        end
-
         def initialize(inputs = {})
           super
           @environment = Store::Environment::STAT

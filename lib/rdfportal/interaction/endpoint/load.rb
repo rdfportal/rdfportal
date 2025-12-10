@@ -6,13 +6,6 @@ module RDFPortal
       require_relative 'base'
 
       class Load < Base
-        DEFAULT_PARALLEL_COUNT = 5
-
-        hash :load, default: {} do
-          integer :parallel, default: DEFAULT_PARALLEL_COUNT
-          boolean :snapshots, default: true
-        end
-
         def execute
           if pretend
             list_datasets_by_graph

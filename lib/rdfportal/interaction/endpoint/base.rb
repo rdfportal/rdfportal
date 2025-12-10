@@ -3,6 +3,8 @@
 module RDFPortal
   module Interaction
     module Endpoint
+      DEFAULT_PARALLEL_COUNT = 5
+
       # A base class representing the structure of endpoint.yml
       class Base < Interaction::Base
         string :name
@@ -25,6 +27,27 @@ module RDFPortal
             end
             hash :stat, default: nil do
               boolean :disable, default: nil
+            end
+          end
+        end
+
+        hash :load, default: {} do
+          integer :parallel, default: DEFAULT_PARALLEL_COUNT
+          boolean :snapshots, default: true
+        end
+
+        hash :stat, default: {} do
+          boolean :graph, default: true
+          string :endpoint, default: nil
+        end
+
+        hash :publish, default: {} do
+          flex_array :postprocess, default: [] do
+            hash do
+              string :action
+              string :file, default: nil
+              string :script, default: nil
+              hash :environments, default: nil
             end
           end
         end
