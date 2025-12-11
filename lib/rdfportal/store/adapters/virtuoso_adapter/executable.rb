@@ -74,6 +74,8 @@ module RDFPortal
           end
 
           def spawn_server
+            raise Error, "Ini file not found: #{ini_file}" unless ini_file.exist?
+
             cmd = [virtuoso_bin.to_s, '+configfile', ini_file.to_s]
 
             pid = Process.spawn(*cmd, pgroup: true)

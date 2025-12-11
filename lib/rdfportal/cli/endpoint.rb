@@ -2,13 +2,9 @@
 
 module RDFPortal
   module CLI
-    class Endpoint < Thor
-      class << self
-        def exit_on_failure?
-          true
-        end
-      end
+    require_relative 'base'
 
+    class Endpoint < Base
       desc 'config <NAME>', 'Parse, resolve and render endpoint configuration'
 
       def config(name)
@@ -85,9 +81,12 @@ module RDFPortal
       end
 
       desc 'start <NAME>', 'Start database'
+      option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
 
       def start(name)
-        config = RDFPortal.endpoint_config(name, :load)
+        environment = check_environment
+
+        config = RDFPortal.endpoint_config(name, environment)
         repo = repository(name, config)
 
         unless repo.working.exist?
@@ -171,11 +170,7 @@ module RDFPortal
       def console(name, command = nil)
         RDFPortal.logger = RDFPortal::Logger.new($stderr, level: ::Logger::Severity::DEBUG)
 
-        environment = options.fetch(:environment, 'load').to_sym
-
-        unless Store::Environment.constants.any? { |c| Store::Environment.const_get(c) == environment.to_sym }
-          abort "Unknown environment: #{options[:environment]}"
-        end
+        environment = check_environment
 
         config = RDFPortal.endpoint_config(name, environment)
         repository = repository(name, config)
@@ -206,18 +201,16 @@ module RDFPortal
         end
       end
 
-      no_commands do
-        def repository(name, config)
-          prefix = config.dig(:directory, :prefix) || raise(Error, 'Working directory not specified')
+      private
 
-          options = {}
+      def check_environment
+        environment = options.fetch(:environment, 'load').to_sym
 
-          if (working = config.dig(:directory, :working))
-            options[:working] = Pathname.new(working).join(name)
-          end
-
-          Repository::Endpoint.new(Pathname.new(prefix).join(name), **options)
+        unless Store::Environment.constants.any? { |c| Store::Environment.const_get(c) == environment }
+          abort "Unknown environment: #{environment}"
         end
+
+        environment
       end
     end
   end
