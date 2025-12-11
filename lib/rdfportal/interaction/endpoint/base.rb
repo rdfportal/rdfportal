@@ -56,9 +56,12 @@ module RDFPortal
 
         validates :'database.adapter', inclusion: { in: AVAILABLE_ADAPTERS }
 
+        attr_reader :environment
+
         def initialize(inputs = {})
+          env = inputs.delete(:environment)&.to_sym
+          @environment ||= (env || Store::Environment::LOAD)
           super
-          @environment = Store::Environment::LOAD
         end
 
         private

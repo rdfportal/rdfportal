@@ -7,8 +7,8 @@ module RDFPortal
 
       class Statistics < Base
         def initialize(inputs = {})
-          super
           @environment = Store::Environment::STAT
+          super
         end
 
         def execute
