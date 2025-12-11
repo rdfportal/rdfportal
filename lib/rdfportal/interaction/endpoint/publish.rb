@@ -6,17 +6,6 @@ module RDFPortal
       require_relative 'base'
 
       class Publish < Base
-        hash :publish, default: {} do
-          flex_array :postprocess, default: [] do
-            hash do
-              string :action
-              string :file, default: nil
-              string :script, default: nil
-              hash :environments, default: nil
-            end
-          end
-        end
-
         ARRAY_POSTPROCESS_ACTIONS = %w[script].freeze
 
         validate :postprocess_config
