@@ -335,7 +335,6 @@ module RDFPortal
 
                     g << [dataset, Vocab::SBM[:classRelation], class_relation]
                     g << [class_relation, RDF.type, Vocab::SBM[:ClassRelation]]
-                    g << [class_relation, Vocab::SBM[:hashing], RDF::Literal.new("ClassRels:#{graph}#{name}", datatype: RDF::XSD.string)]
                     g << [class_relation, Vocab::SBM[:subjectClass], RDF::URI(x[:subject])]
 
                     g << if x[:dtype].present?
