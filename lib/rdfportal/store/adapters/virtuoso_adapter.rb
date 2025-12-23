@@ -124,7 +124,7 @@ module RDFPortal
               next
             end
 
-            connection.send(method, dir, File.basename(config[:pattern]), config[:graph])
+            connection.send(method, File.realpath(dir), File.basename(config[:pattern]), config[:graph])
           end
         end
 
