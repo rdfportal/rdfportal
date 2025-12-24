@@ -180,7 +180,9 @@ module RDFPortal
             {
               adapter: 'odbc',
               drvconnect: conn_string,
-              loggers: [RDFPortal.logger]
+              loggers: [RDFPortal.logger],
+              max_connections: 50,
+              pool_timeout: 10
             }
           end
 

@@ -44,7 +44,7 @@ module RDFPortal
               statistics[dataset][:properties].merge(stat.fetch(:properties, []))
             end
 
-            statistics.each do |_, stat|
+            statistics.each_value do |stat|
               stat[:class_count] = stat.delete(:classes).size
               stat[:property_count] = stat.delete(:properties).size
             end
@@ -111,7 +111,7 @@ module RDFPortal
                         SPARQL::GSPO::QUERY_0_G.gsub('__graph__', "<#{dataset[:graph]}>")
                       end
 
-              connection.fetch("SPARQL #{query}").flat_map do |row|
+              @adapter.connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").flat_map do |row|
                 if graph_disabled?
                   [
                     SPARQL::GSPO::QUERY_1_N.gsub('__sclass__', "<#{row[:class]}>"),
@@ -394,12 +394,7 @@ module RDFPortal
             end
           end
 
-          # @return [Sequel::ODBC::Database]
-          def connection
-            Thread.current[:sequel_connection] ||= Sequel.connect(@adapter.connection.odbc_config)
-          end
-
-          def run_queries_in_parallel(queries, output, thread_count: 10)
+          def run_queries_in_parallel(queries, output, thread_count: 20)
             FileUtils.rm_f(output)
 
             write_buffer = Queue.new
@@ -427,35 +422,31 @@ module RDFPortal
               Thread.new do
                 RDFPortal.logger = parent_logger
 
-                begin
-                  loop do
-                    break if (query = queue.pop) == THREAD_TERMINATE_SIGNAL
+                loop do
+                  break if (query = queue.pop) == THREAD_TERMINATE_SIGNAL
 
-                    retry_count = 0
-                    result = nil
+                  retry_count = 0
+                  result = nil
 
-                    t = Benchmark.realtime do
-                      result = begin
-                                 connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
-                               rescue Sequel::DatabaseConnectionError => e
-                                 RDFPortal.logger.warn(self.class) { "#{e.message}, retrying..." }
-                                 if (retry_count += 1) <= 3
-                                   sleep 2**retry_count
-                                   retry
-                                 end
-                                 raise e
-                               rescue StandardError => e
-                                 RDFPortal.logger.error(self.class) { e.full_message }
-                                 [{ error: e.full_message }]
+                  t = Benchmark.realtime do
+                    result = begin
+                               @adapter.connection.fetch("SPARQL #{query.gsub(/\n\s*/, ' ').strip}").map(&:to_h)
+                             rescue Sequel::DatabaseConnectionError => e
+                               RDFPortal.logger.warn(self.class) { "#{e.message}, retrying..." }
+                               if (retry_count += 1) <= 3
+                                 sleep 2**retry_count
+                                 retry
                                end
-                    end
-
-                    doc = { query:, elapsed: t.readable_duration, result: }.deep_stringify_keys.to_yaml
-
-                    write_buffer << doc
+                               raise e
+                             rescue StandardError => e
+                               RDFPortal.logger.error(self.class) { e.full_message }
+                               [{ error: e.full_message }]
+                             end
                   end
-                ensure
-                  connection.disconnect
+
+                  doc = { query:, elapsed: t.readable_duration, result: }.deep_stringify_keys.to_yaml
+
+                  write_buffer << doc
                 end
               end
             end

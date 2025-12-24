@@ -190,30 +190,26 @@ module RDFPortal
         def statistics(**options)
           statistics = Statistics.new(self)
 
-          gspo = options[:output_dir].join('gspo.yml.gz')
-          count = options[:output_dir].join('gspo_count.yml.gz')
-          stat = options[:output_dir].join('statistics.yml')
-          void = options[:output_dir].join('void_plus.ttl')
-          prefixes = Statistics::Vocab.prefixes
+          output_dir = Pathname.new(options[:output_dir] || '.')
 
-          unless gspo.exist?
+          unless (gspo = output_dir.join('gspo.yml.gz')).exist?
             RDFPortal.logger.info(self.class) { 'Collecting GSPO...' }
             statistics.gspo(gspo)
           end
 
-          unless count.exist?
+          unless (count = output_dir.join('gspo_count.yml.gz')).exist?
             RDFPortal.logger.info(self.class) { 'Counting GSPO...' }
             statistics.gspo_count(gspo, count)
           end
 
-          unless stat.exist?
+          unless (statistics = output_dir.join('statistics.yml')).exist?
             RDFPortal.logger.info(self.class) { 'Aggregating statistics...' }
-            File.write(stat, YAML.dump(statistics.statistics(count)))
+            File.write(statistics, YAML.dump(statistics.statistics(count)))
           end
 
-          unless void.exist?
+          unless (void = output_dir.join('void_plus.ttl')).exist?
             RDFPortal.logger.info(self.class) { 'Generating VoID...' }
-            File.write(void, statistics.void(count).dump(:turtle, prefixes:))
+            File.write(void, statistics.void(count).dump(:turtle, prefixes: Statistics::Vocab.prefixes))
           end
         end
 
