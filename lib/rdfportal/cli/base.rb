@@ -14,15 +14,15 @@ module RDFPortal
       private
 
       def repository(name, config)
-        prefix = config.dig(:directory, :prefix) || raise(Error, 'Working directory not specified')
+        opts = {}
 
-        options = {}
+        prefix = config.dig(:directory, :prefix) || raise(Error, 'Directory prefix not specified')
 
-        if (working = config.dig(:directory, :working))
-          options[:working] = Pathname.new(working).join(name)
+        if (working = options[:work_dir] || config.dig(:directory, :working))
+          opts[:working] = Pathname.new(working).join(name)
         end
 
-        Repository::Endpoint.new(Pathname.new(prefix).join(name), **options)
+        Repository::Endpoint.new(Pathname.new(prefix).join(name), **opts)
       end
     end
   end

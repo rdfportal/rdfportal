@@ -13,31 +13,44 @@ module RDFPortal
         include ExternalCommand
 
         def execute
-          current = repository.releases.current
+          dest = if repository.working.release_file.exist?
+                   repository.releases.new(File.read(repository.working.release_file).strip)
+                 else
+                   repository.releases.new
+                 end
 
-          if (dest = repository.releases.new).exist?
-            RDFPortal.logger.warn(self.class) { "Release already exist: #{dest}" }
-          else
-            dest.mkpath
+          dest.mkpath unless dest.exist?
 
-            server.publish(dest:)
+          server.publish(dest:)
 
-            current.unlink if current.exist?
-
-            current.make_symlink(dest.basename)
-
-            RDFPortal.logger.info(self.class) { "Successfully published to #{dest}" }
+          if (dir = repository.working.log_dir).exist? && !dir.empty?
+            RDFPortal.logger.info(self.class) { 'Copying log files' }
+            FileUtils.cp_r(dir, dest, preserve: true)
           end
+
+          if (dir = repository.working.stat_dir).exist? && !dir.empty?
+            RDFPortal.logger.info(self.class) { 'Copying statistics files' }
+            FileUtils.cp_r(dir, dest, preserve: true)
+          end
+
+          if repository.working.cache_file.exist?
+            RDFPortal.logger.info(self.class) { 'Copying cache file' }
+            FileUtils.cp(repository.working.cache_file, dest, preserve: true)
+          end
+
+          File.write(repository.working.release_file, dest.basename.to_s) unless repository.working.release_file.exist?
 
           publish[:postprocess].each do |step|
             case step[:action]
             when 'script'
               env = step[:environments].presence || {}
               env['RDFPORTAL_PUBLISH_ENDPOINT_NAME'] = name
-              env['RDFPORTAL_PUBLISH_LATEST_RELEASE'] = dest.to_s
+              env['RDFPORTAL_PUBLISH_LATEST_RELEASE_DIR'] = dest.to_s
+              env['RDFPORTAL_PUBLISH_LATEST_RELEASE_VERSION'] = dest.basename.to_s
 
-              cmd = if (file = step[:file]).present?
-                      File.executable?(file) ? [file] : ['sh', file]
+              cmd = if step[:file].present?
+                      file = RDFPortal.config_endpoints_dir.join(step[:file])
+                      file.executable? ? [file.to_s] : ['sh', file.to_s]
                     elsif step[:script].present?
                       step[:script]
                     else
@@ -49,6 +62,19 @@ module RDFPortal
               raise Error, "Unknown action: #{step[:action]}"
             end
           end
+
+          current = repository.releases.current
+
+          if current.exist?
+            if current.realpath.basename.to_s != dest.basename.to_s
+              current.unlink
+              current.make_symlink(dest.basename)
+            end
+          else
+            current.make_symlink(dest.basename)
+          end
+
+          RDFPortal.logger.info(self.class) { "Successfully published to #{dest}" }
         end
 
         private

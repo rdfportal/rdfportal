@@ -147,8 +147,8 @@ module RDFPortal
 
           RDFPortal.logger.info(self.class) { 'Copying snapshot...' }
 
-          FileUtils.cp(repository.working.database_dir.join('virtuoso.db'), repository.snapshot[options[:name]])
-          FileUtils.cp(repository.working.cache_file, repository.snapshot.cache_file)
+          FileUtils.cp(repository.working.database_dir.join('virtuoso.db'), repository.snapshot[options[:name]], preserve: true)
+          FileUtils.cp(repository.working.cache_file, repository.snapshot.cache_file, preserve: true)
 
           start_if_needed!
         end
@@ -156,18 +156,15 @@ module RDFPortal
         def cleanup_loader(**options); end
 
         def publish(**options)
-          stop!
-
           return unless options[:dest]
 
-          dest = Repository::Release.new(options[:dest])
-          dest.prepare
+          stop!
 
-          RDFPortal.logger.info(self.class) { 'Copying database files' }
-
-          FileUtils.cp(repository.working.database_dir.join('virtuoso.db'), dest.database_dir)
-          FileUtils.cp_r(repository.working.log_dir, dest)
-          FileUtils.cp(repository.working.cache_file, dest)
+          unless (dest = Repository::Release.new(options[:dest])).database_dir.join('virtuoso.db').exist?
+            dest.prepare
+            RDFPortal.logger.info(self.class) { 'Copying database files' }
+            FileUtils.cp(repository.working.database_dir.join('virtuoso.db'), dest.database_dir, preserve: true)
+          end
         end
 
         def environment(**options)

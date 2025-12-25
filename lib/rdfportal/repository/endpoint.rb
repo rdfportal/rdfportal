@@ -73,6 +73,7 @@ module RDFPortal
       DB_DIR_NAME = 'db'
       LOG_DIR_NAME = 'log'
       STAT_DIR_NAME = 'stat'
+      RELEASE_FILE_NAME = '.release'
 
       def prepare
         database_dir.mkpath
@@ -102,6 +103,11 @@ module RDFPortal
       # @return [Pathname]
       def stat_dir
         join STAT_DIR_NAME
+      end
+
+      # @return [Pathname]
+      def release_file
+        join RELEASE_FILE_NAME
       end
     end
 
