@@ -276,9 +276,20 @@ module RDFPortal
             File.open(log_file, 'r') do |f|
               f.seek(start_pos, IO::SEEK_SET)
 
+              last_lines = []
+
               loop do
                 if (line = f.gets)
-                  return true if line.include?('Server online at')
+                  if (msg = line.strip) && !msg.empty?
+                    last_lines << msg
+                    last_lines.shift if last_lines.size > 10
+                  end
+
+                  if line.include?('Server online at')
+                    return true
+                  elsif line.include?('Server exiting')
+                    raise Error, "Virtuoso server exited unexpectedly. Last log messages:\n#{last_lines.join("\n")}"
+                  end
                 else
                   sleep 1
                 end
