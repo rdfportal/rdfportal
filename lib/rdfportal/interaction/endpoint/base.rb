@@ -60,7 +60,8 @@ module RDFPortal
 
         def initialize(inputs = {})
           env = inputs.delete(:environment)&.to_sym
-          @environment ||= (env || Store::Environment::LOAD)
+          @environment ||= env || Store::Environment::LOAD
+          @repository = inputs.delete(:repository)
           super
         end
 

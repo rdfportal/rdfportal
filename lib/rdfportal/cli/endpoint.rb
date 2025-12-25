@@ -31,7 +31,7 @@ module RDFPortal
           if yes?('Working directory already exists. Remove it? [y/N]', :yellow)
             RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-            Interaction::Endpoint::Stop.run!(name:, **config)
+            Interaction::Endpoint::Stop.run!(name:, **config, repository: repo)
             FileUtils.rm_rf(repo.working)
           else
             abort 'Aborted.'
@@ -43,7 +43,7 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('setup.log'))
 
-        Interaction::Endpoint::Setup.run!(name:, **config, force: options[:force])
+        Interaction::Endpoint::Setup.run!(name:, **config, repository: repo, force: options[:force])
       rescue Error => e
         abort e.message
       rescue StandardError => e
@@ -71,7 +71,7 @@ module RDFPortal
                              RDFPortal::Logger.new(repo.working.log_dir.join('load.log'))
                            end
 
-        action = Interaction::Endpoint::Load.run(name:, **config, pretend: options[:pretend])
+        action = Interaction::Endpoint::Load.run(name:, **config, repository: repo, pretend: options[:pretend])
 
         raise(Error, action.errors.input_error_messages) unless action.valid?
 
@@ -98,7 +98,7 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        Interaction::Endpoint::Start.run!(name:, **config, environment:)
+        Interaction::Endpoint::Start.run!(name:, **config, repository: repo, environment:)
       rescue Error => e
         abort e.message
       rescue StandardError => e
@@ -135,7 +135,7 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('publish.log'))
 
-        action = Interaction::Endpoint::Publish.run(name:, **config)
+        action = Interaction::Endpoint::Publish.run(name:, **config, repository: repo)
 
         raise(Error, action.errors.input_error_messages) unless action.valid?
       rescue Error, ActiveInteraction::InvalidInteractionError => e
@@ -160,7 +160,7 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('statistics.log'))
 
-        action = Interaction::Endpoint::Statistics.run(name:, **config, environment: :stat)
+        action = Interaction::Endpoint::Statistics.run(name:, **config, repository: repo, environment: :stat)
 
         raise(Error, action.errors.input_error_messages) unless action.valid?
       rescue Error, ActiveInteraction::InvalidInteractionError => e
