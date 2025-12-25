@@ -204,8 +204,18 @@ module RDFPortal
             File.write(statistics, YAML.dump(statistics.statistics(count)))
           end
 
-          unless (void = output_dir.join('void_plus.ttl')).exist?
-            RDFPortal.logger.info(self.class) { 'Generating VoID...' }
+          void = if options[:void_format] == 'ntriples'
+                   output_dir.join('void_plus.nt')
+                 else
+                   output_dir.join('void_plus.ttl')
+                 end
+
+          return if void.exist?
+
+          RDFPortal.logger.info(self.class) { "Generating VoID(#{options[:void_format]})..." }
+          if options[:void_format] == 'ntriples'
+            File.write(void, statistics.void(count).dump(:ntriples))
+          else
             File.write(void, statistics.void(count).dump(:turtle, prefixes: Statistics::Vocab.prefixes))
           end
         end
