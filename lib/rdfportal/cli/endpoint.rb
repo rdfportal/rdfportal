@@ -109,10 +109,11 @@ module RDFPortal
 
       def stop(name)
         config = RDFPortal.endpoint_config(name, :load)
+        repo = repository(name, config)
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        Interaction::Endpoint::Stop.run!(name:, **config)
+        Interaction::Endpoint::Stop.run!(name:, **config, repository: repo)
       rescue Error => e
         abort e.message
       rescue StandardError => e
