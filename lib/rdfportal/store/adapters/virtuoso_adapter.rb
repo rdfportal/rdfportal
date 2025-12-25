@@ -199,9 +199,9 @@ module RDFPortal
             statistics.gspo_count(gspo, count)
           end
 
-          unless (statistics = output_dir.join('statistics.yml')).exist?
+          unless (stat = output_dir.join('statistics.yml')).exist?
             RDFPortal.logger.info(self.class) { 'Aggregating statistics...' }
-            File.write(statistics, YAML.dump(statistics.statistics(count)))
+            File.write(stat, YAML.dump(statistics.statistics(count)))
           end
 
           void = if options[:void_format] == 'ntriples'
