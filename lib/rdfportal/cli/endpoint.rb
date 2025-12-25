@@ -21,7 +21,7 @@ module RDFPortal
 
       desc 'setup <NAME>', 'Setup database'
       option :force, aliases: '-f', type: :boolean, desc: 'Start from empty database even if snapshot is available'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def setup(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -52,7 +52,7 @@ module RDFPortal
 
       desc 'load <NAME>', 'Load datasets'
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not load actually'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def load(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -84,7 +84,7 @@ module RDFPortal
 
       desc 'start <NAME>', 'Start database'
       option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def start(name)
         environment = check_environment
@@ -106,6 +106,7 @@ module RDFPortal
       end
 
       desc 'stop <NAME>', 'Stop database'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def stop(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -121,7 +122,7 @@ module RDFPortal
       end
 
       desc 'publish <NAME>', 'Publish database'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def publish(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -146,7 +147,7 @@ module RDFPortal
       end
 
       desc 'statistics <NAME>', 'Publish database'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def statistics(name)
         config = RDFPortal.endpoint_config(name, :stat)
@@ -172,7 +173,7 @@ module RDFPortal
 
       desc 'console <NAME>', 'Start console for debugging'
       option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
-      option :work_dir, aliases: '-f', type: :string, desc: 'Use temporary working directory'
+      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def console(name, command = nil)
         RDFPortal.logger = RDFPortal::Logger.new($stderr, level: ::Logger::Severity::DEBUG)
