@@ -15,18 +15,17 @@ module RDFPortal
 
       desc 'Check the system and configuration for RDFPortal'
 
-      # def check_raptor
-      #   say "Checking raptor..."
-      #
-      #   version = obtain('rapper --version')&.strip
-      #   result(version.present?, "raptor installation#{version ? " (#{version})" : ''}")
-      #
-      #   unless version.present?
-      #     prescriptions.push <<~MSG
-      #       Please install Raptor RDF Syntax Library (https://librdf.org/raptor/).
-      #     MSG
-      #   end
-      # end
+      def check_java
+        say 'Checking java...'
+
+        version = if check_status('java -version >/dev/null 2>&1').present?
+                    capture_output('java -version')&.strip&.gsub("\n", ', ')
+                  end
+
+        result(version.present?, "java installation#{" (#{version})" if version}")
+
+        prescriptions.push 'Install Java Runtime Environment.' unless version.present?
+      end
 
       def check_redis
         say "\nChecking redis... (#{RDFPortal.redis})"
