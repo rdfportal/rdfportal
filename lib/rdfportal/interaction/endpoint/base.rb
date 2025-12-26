@@ -48,7 +48,7 @@ module RDFPortal
               string :action
               string :file, default: nil
               string :script, default: nil
-              hash :environments, default: nil
+              hash :environments, default: {}, strip: false
             end
           end
         end
