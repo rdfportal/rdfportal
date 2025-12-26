@@ -106,7 +106,7 @@ module RDFPortal
             next
           end
 
-          Convert.new.invoke(:ntriples, [x.to_s], output: dest.to_s)
+          Convert.new.invoke(:ntriples, [x.to_s], force: true, output: dest.to_s, split: true)
 
           success << x
 
