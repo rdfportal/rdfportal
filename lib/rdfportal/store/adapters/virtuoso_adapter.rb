@@ -43,23 +43,25 @@ module RDFPortal
         def start_if_needed!
           return true if running_by_pidfile?
 
-          RDFPortal.logger.info(self.class) { 'Server starting...' }
+          RDFPortal.logger.info(self.class) { 'Starting server...' }
 
           executable.spawn_server
 
-          wait_until_online.tap do
-            RDFPortal.logger.info(self.class) { "Server started at #{options[:port]}" }
-          end
+          wait_until_online
+
+          RDFPortal.logger.info(self.class) { "Server started at #{options[:port]}" }
         end
 
         def stop!
           return false unless running_by_pidfile?
-          return false unless (pid = Integer(File.read(pid_file).sub('VIRT_PID=', '').strip, exception: false))
 
-          RDFPortal.logger.info(self.class) { 'Server stopping...' }
+          RDFPortal.logger.info(self.class) { 'Stopping server ...' }
 
-          Process.kill('INT', pid)
+          connection.checkpoint
+          connection.shutdown
           @connection = nil
+
+          wait_until_shutdown
 
           RDFPortal.logger.info(self.class) { 'Server stopped' }
 
@@ -282,19 +284,12 @@ module RDFPortal
             File.open(log_file, 'r') do |f|
               f.seek(start_pos, IO::SEEK_SET)
 
-              last_lines = []
-
               loop do
                 if (line = f.gets)
-                  if (msg = line.strip) && !msg.empty?
-                    last_lines << msg
-                    last_lines.shift if last_lines.size > 10
-                  end
-
                   if line.include?('Server online at')
                     return true
                   elsif line.include?('Server exiting')
-                    raise Error, "Virtuoso server exited unexpectedly. Last log messages:\n#{last_lines.join("\n")}"
+                    raise Error, 'Virtuoso server exited unexpectedly'
                   end
                 else
                   sleep 1
@@ -304,6 +299,28 @@ module RDFPortal
           end
         rescue Timeout::Error
           raise Error, 'Virtuoso server did not get online in time'
+        end
+
+        def wait_until_shutdown(timeout: 300)
+          start_pos = log_file.exist? ? log_file.size : 0
+
+          Timeout.timeout(timeout) do
+            sleep 1 until log_file.exist?
+
+            File.open(log_file, 'r') do |f|
+              f.seek(start_pos, IO::SEEK_SET)
+
+              loop do
+                if (line = f.gets)
+                  return true if line.include?('Server shutdown complete')
+                else
+                  sleep 1
+                end
+              end
+            end
+          end
+        rescue Timeout::Error
+          raise Error, 'Virtuoso server did not shutdown in time'
         end
       end
     end

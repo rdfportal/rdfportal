@@ -82,6 +82,8 @@ module RDFPortal
             RDFPortal.logger.info(self.class) { 'Start checkpoint' }
 
             connection.run 'CHECKPOINT'
+
+            RDFPortal.logger.info(self.class) { 'Finish checkpoint' }
           end
 
           def ld_dir(dir, file, graph)
@@ -95,7 +97,7 @@ module RDFPortal
           def rdf_loader_run(parallel: 1)
             raise ArgumentError, '`parallel` must be positive integer' unless parallel.positive?
 
-            RDFPortal.logger.info(self.class) { "Start loading (parallel = #{parallel})" }
+            RDFPortal.logger.info(self.class) { "Start rdf_loader_run (parallel = #{parallel})" }
 
             time = Benchmark.realtime do
               threads = (1..parallel).map do
@@ -104,7 +106,7 @@ module RDFPortal
               threads.each(&:join)
             end
 
-            RDFPortal.logger.info(self.class) { "Finish loading in #{time.to_i.readable_duration}" }
+            RDFPortal.logger.info(self.class) { "Finish rdf_loader_run in #{time.to_i.readable_duration}" }
           end
 
           def rdf_load_stop
