@@ -113,18 +113,24 @@ module RDFPortal
 
         def before_load(**options)
           options[:config].each do |config|
-            method, dir = if File.dirname(config[:pattern]) == '**'
-                            [:ld_dir_all, File.dirname(config[:pattern], 2)]
-                          else
-                            [:ld_dir, File.dirname(config[:pattern])]
-                          end
+            method, dir, pattern = if config[:pattern].include?('**')
+                                     dir, pattern = config[:pattern].split('**', 2)
+                                     [:ld_dir_all, dir.delete_suffix('/'), pattern.delete_prefix('/')]
+                                   else
+                                     [:ld_dir, File.dirname(config[:pattern]), File.basename(config[:pattern])]
+                                   end
+
+            if pattern.empty?
+              RDFPortal.logger.warn(self.class) { "Pattern is empty: #{config[:pattern]}" }
+              next
+            end
 
             unless Dir.exist?(dir)
               RDFPortal.logger.warn(self.class) { "Directory not found: #{dir}" }
               next
             end
 
-            connection.send(method, File.realpath(dir), File.basename(config[:pattern]), config[:graph])
+            connection.send(method, File.realpath(dir), pattern, config[:graph])
           end
         end
 
