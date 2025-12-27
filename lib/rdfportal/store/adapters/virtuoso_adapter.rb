@@ -45,9 +45,9 @@ module RDFPortal
 
           RDFPortal.logger.info(self.class) { 'Starting server...' }
 
-          executable.spawn_server
-
-          wait_until_online
+          wait_until_online do
+            executable.spawn_server
+          end
 
           RDFPortal.logger.info(self.class) { "Server started at #{options[:port]}" }
         end
@@ -58,10 +58,11 @@ module RDFPortal
           RDFPortal.logger.info(self.class) { 'Stopping server ...' }
 
           connection.checkpoint
-          connection.shutdown
-          @connection = nil
 
-          wait_until_shutdown
+          wait_until_shutdown do
+            connection.shutdown
+            @connection = nil
+          end
 
           RDFPortal.logger.info(self.class) { 'Server stopped' }
 
@@ -278,6 +279,8 @@ module RDFPortal
         def wait_until_online(timeout: 300)
           start_pos = log_file.exist? ? log_file.size : 0
 
+          yield if block_given?
+
           Timeout.timeout(timeout) do
             sleep 1 until log_file.exist?
 
@@ -303,6 +306,8 @@ module RDFPortal
 
         def wait_until_shutdown(timeout: 300)
           start_pos = log_file.exist? ? log_file.size : 0
+
+          yield if block_given?
 
           Timeout.timeout(timeout) do
             sleep 1 until log_file.exist?
