@@ -49,8 +49,7 @@ module RDFPortal
               env['RDFPORTAL_PUBLISH_LATEST_RELEASE_VERSION'] = dest.basename.to_s
 
               cmd = if hash[:file].present?
-                      file = RDFPortal.config_endpoints_dir.join(hash[:file])
-                      file.executable? ? [file.to_s] : ['sh', file.to_s]
+                      File.executable?(hash[:file]) ? [hash[:file]] : ['sh', hash[:file]]
                     elsif hash[:script].present?
                       hash[:script]
                     else
@@ -98,7 +97,7 @@ module RDFPortal
             end
 
             if hash[:file].present?
-              hash[:file] = File.expand_path(step[:file], RDFPortal.config_endpoints_dir)
+              hash[:file] = File.expand_path(hash[:file], RDFPortal.config_endpoints_dir)
               errors.add("#{attribute}.file", 'not found') unless File.exist?(hash[:file])
             end
           end
