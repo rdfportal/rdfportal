@@ -311,7 +311,6 @@ module RDFPortal
 
         def postprocess_options
           {
-            command_log: :info,
             stdout: :info,
             stderr: :info,
             chdir: target_dir

@@ -106,7 +106,7 @@ module RDFPortal
       cmd << "cd '#{uri.path}'; cls -1D; bye"
       cmd << uri.host
 
-      ret = run_cmd(*cmd)
+      ret = run_cmd(*cmd, stdout: false, stderr: false)
 
       raise ExternalCommandError, ret if ret.failure?
 

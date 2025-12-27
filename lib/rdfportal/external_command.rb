@@ -5,51 +5,24 @@ require 'rdfportal/extension'
 
 module RDFPortal
   module ExternalCommand
-
     # @return [TTY::Command::Result]
     def run_cmd(*cmd, **options)
-      %i[command_log stdout stderr].each do |x|
-        next if options[x] == false
+      runner = TTY::Command.new(printer: RDFPortal::ExternalCommand::LogPrinter)
+      runner.printer.stdout = options[:stdout]
+      runner.printer.stderr = options[:stderr]
+      runner.printer.formatter = options[:formatter]
+      runner.printer.logger = options[:logger] || RDFPortal.logger
+      runner.printer.command_log = options[:command_log]
+      runner.printer.caller = is_a?(Class) ? self : self.class
 
-        options[x] ||= :debug
-      end
+      method = options[:exception] ? :run : :run!
 
-      unless options[:command_log] == false
-        RDFPortal.logger.send(options[:command_log], self.class) { cmd_string(*cmd, **cmd_options(**options)) }
-      end
+      options[:only_output_on_error] ||= true
 
-      time, ret = Benchmark.realtime_with_return do
-        method = options[:exception] ? :run : :run!
-
-        TTY::Command.new(printer: :null).send(method, *cmd, **cmd_options(**options)) do |out, err|
-          if (out = out&.strip).present? && options[:stdout] != false
-            out = options[:format].call(out) if options[:format]
-
-            if options[:stdout].respond_to?(:write)
-              options[:stdout].write(out, "\n")
-            elsif RDFPortal.logger.respond_to?(options[:stdout])
-              RDFPortal.logger.send(options[:stdout], self.class) { "[STDOUT] #{out}" }
-            end
-          end
-
-          if (err = err&.strip).present? && options[:stderr] != false
-            err = options[:format].call(err) if options[:format]
-
-            if options[:stderr].respond_to?(:write)
-              options[:stderr].write(err, "\n")
-            elsif RDFPortal.logger.respond_to?(options[:stderr])
-              RDFPortal.logger.send(options[:stderr], self.class) { "[STDERR] #{err}" }
-            end
-          end
-        end
-      end
+      ret = runner.send(method, *cmd, **cmd_options(**options))
 
       # set command string for exception handling
       ret.command = cmd_string(*cmd, **options) if ret.respond_to?(:command=)
-
-      RDFPortal.logger.debug(self.class) do
-        "Finished in #{time.readable_duration} with exit status #{ret.status}."
-      end
 
       ret
     end
@@ -79,6 +52,79 @@ module RDFPortal
 
     def extract_output(value)
       (value || '').strip.empty? ? 'Nothing written' : value.strip
+    end
+
+    class LogPrinter < TTY::Command::Printers::Abstract
+      TIME_FORMAT = '%5.3f %s'
+
+      attr_accessor :command_log, :stdout, :stderr, :formatter, :logger, :caller
+
+      def print_command_start(cmd, *args)
+        return if @command_log == false
+
+        message = ["Running #{cmd.to_command}"]
+        message << args.map(&:chomp).join(' ') unless args.empty?
+
+        write(cmd, message.join)
+      end
+
+      def print_command_out_data(cmd, *args)
+        message = args.map { |x| x.sub(/\A[\r\n]+/, '').chomp }.join(' ')
+        write(cmd, message, out_data, :out)
+      end
+
+      def print_command_err_data(cmd, *args)
+        message = args.map { |x| x.sub(/\A[\r\n]+/, '').chomp }.join(' ')
+        write(cmd, message, err_data, :err)
+      end
+
+      def print_command_exit(cmd, status, runtime, *args)
+        if cmd.only_output_on_error && !status.zero?
+          output << out_data
+          output << err_data
+        end
+
+        return if @command_log == false
+
+        runtime = format(TIME_FORMAT, runtime, 'second'.pluralize(runtime))
+        message = ["Finished in #{runtime}"]
+        message << " with exit status #{status}" if status
+        message << " (#{status.zero? ? 'success' : 'failure'})"
+
+        write(cmd, message.join)
+      end
+
+      def write(cmd, message, data = nil, stream = nil)
+        if @logger
+          method, name = if stream == :out
+                           [@stdout.is_a?(Symbol) && @logger.respond_to?(@stdout) ? @stdout : :debug, 'STDOUT']
+                         elsif stream == :err
+                           [@stderr.is_a?(Symbol) && @logger.respond_to?(@stderr) ? @stderr : :debug, 'STDERR']
+                         else
+                           [:info, @caller || self.class]
+                         end
+
+          message.each_line { |line| @logger.send(method, name) { line.chomp } }
+        end
+
+        message = @formatter.call(message) if @formatter
+
+        if cmd.only_output_on_error && !data.nil?
+          data << "#{message}\n"
+        elsif stream == :out
+          if @stdout.nil? && @stdout != false
+            output << "#{message}\n"
+          elsif @stdout.respond_to?(:write)
+            @stdout.write(message, "\n")
+          end
+        elsif stream == :err
+          if @stderr.nil?
+            output << "#{message}\n"
+          elsif @stderr.respond_to?(:write)
+            @stderr.write(message, "\n")
+          end
+        end
+      end
     end
   end
 end

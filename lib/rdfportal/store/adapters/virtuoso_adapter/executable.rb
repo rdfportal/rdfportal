@@ -19,7 +19,7 @@ module RDFPortal
           def_delegators :@adapter, :name, :repository, :options
 
           def current_config(pid)
-            ret = run_cmd!('ps', '-p', pid.to_s, '-o', 'command=')
+            ret = run_cmd!('ps', '-p', pid.to_s, '-o', 'command=', stdout: false, stderr: false)
 
             command = ret.out.strip.split(/\s+/)
 
@@ -43,7 +43,7 @@ module RDFPortal
                        '+key', key,
                        '+value', value.to_s]
 
-                run_cmd!(*cmd, command_log: :info, stdout: :info, stderr: :info)
+                run_cmd!(*cmd, stdout: :info, stderr: :info)
               end
             end
           end
@@ -56,7 +56,7 @@ module RDFPortal
                    '+checkpoint-only',
                    '+configfile', ini_file.to_s]
 
-            run_cmd!(*cmd, command_log: :info, stdout: :info, stderr: :info)
+            run_cmd!(*cmd, stdout: :info, stderr: :info)
           end
 
           def set_password
@@ -70,7 +70,7 @@ module RDFPortal
                    '+pwddba', options[:password],
                    '+pwddav', options[:password]]
 
-            run_cmd!(*cmd, command_log: :info, stdout: :info, stderr: :info)
+            run_cmd!(*cmd, stdout: :info, stderr: :info)
           end
 
           def spawn_server
