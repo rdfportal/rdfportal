@@ -40,26 +40,26 @@ module RDFPortal
 
           File.write(repository.working.release_file, dest.basename.to_s) unless repository.working.release_file.exist?
 
-          publish[:postprocess].each do |step|
-            case step[:action]
+          publish[:postprocess].each do |hash|
+            case hash[:action]
             when 'script'
-              env = step[:environments].presence || {}
+              env = hash[:environments].presence || {}
               env['RDFPORTAL_PUBLISH_ENDPOINT_NAME'] = name
               env['RDFPORTAL_PUBLISH_LATEST_RELEASE_DIR'] = dest.to_s
               env['RDFPORTAL_PUBLISH_LATEST_RELEASE_VERSION'] = dest.basename.to_s
 
-              cmd = if step[:file].present?
-                      file = RDFPortal.config_endpoints_dir.join(step[:file])
+              cmd = if hash[:file].present?
+                      file = RDFPortal.config_endpoints_dir.join(hash[:file])
                       file.executable? ? [file.to_s] : ['sh', file.to_s]
-                    elsif step[:script].present?
-                      step[:script]
+                    elsif hash[:script].present?
+                      hash[:script]
                     else
                       raise Error, '`file` or `script` is required'
                     end
 
               run_cmd!(cmd, stdout: :info, stderr: :info, env:)
             else
-              raise Error, "Unknown action: #{step[:action]}"
+              raise Error, "Unknown action: #{hash[:action]}"
             end
           end
 
@@ -97,7 +97,10 @@ module RDFPortal
               errors.add(attribute, 'either `file` or `script` is required')
             end
 
-            errors.add("#{attribute}.file", 'not found') if hash[:file].present? && !File.exist?(hash[:file])
+            if hash[:file].present?
+              hash[:file] = File.expand_path(step[:file], RDFPortal.config_endpoints_dir)
+              errors.add("#{attribute}.file", 'not found') unless File.exist?(hash[:file])
+            end
           end
         end
       end
