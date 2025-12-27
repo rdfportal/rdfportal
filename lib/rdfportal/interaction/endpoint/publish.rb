@@ -56,7 +56,7 @@ module RDFPortal
                       raise Error, '`file` or `script` is required'
                     end
 
-              run_cmd!(cmd, stdout: :info, stderr: :info, env:)
+              run_cmd!(*cmd, stdout: :info, stderr: :info, env:)
             else
               raise Error, "Unknown action: #{hash[:action]}"
             end
