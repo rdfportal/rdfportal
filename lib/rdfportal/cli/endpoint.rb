@@ -106,10 +106,13 @@ module RDFPortal
       end
 
       desc 'stop <NAME>', 'Stop database'
+      option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
       option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def stop(name)
-        config = RDFPortal.endpoint_config(name, :load)
+        environment = check_environment
+
+        config = RDFPortal.endpoint_config(name, environment)
         repo = repository(name, config)
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
