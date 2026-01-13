@@ -64,6 +64,7 @@ module RDFPortal
             buffer.clear
 
             split = true
+            file_index += 1
             line_count = 0
 
             path = File.expand_path(format(output_template, file_index), dir)
