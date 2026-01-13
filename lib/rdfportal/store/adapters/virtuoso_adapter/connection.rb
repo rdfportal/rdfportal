@@ -68,7 +68,7 @@ module RDFPortal
 
           def shutdown
             connection.run('SHUTDOWN')
-          rescue ODBC::Error
+          rescue Sequel::DatabaseConnectionError, ODBC::Error
             @connection = nil
           end
 
