@@ -68,7 +68,7 @@ module RDFPortal
 
           def shutdown
             connection.run('SHUTDOWN')
-          rescue Sequel::DatabaseConnectionError, ODBC::Error
+          rescue Sequel::DatabaseDisconnectError, ODBC::Error
             @connection = nil
           end
 
@@ -200,6 +200,8 @@ module RDFPortal
           # @return [Sequel::ODBC::Database]
           def connection
             @connection ||= Sequel.connect(odbc_config)
+          rescue Sequel::DatabaseConnectionError
+            raise Error, "Failed to connect to virtuoso at #{options[:host]}:#{options[:port]}"
           end
         end
       end
