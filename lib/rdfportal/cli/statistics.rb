@@ -66,7 +66,7 @@ module RDFPortal
         abort e.full_message
       end
 
-      desc 'publish', 'Publish statistics'
+      desc 'publish <NAME>', 'Publish statistics'
 
       def publish(name)
         config = RDFPortal.endpoint_config(name, :stat)
