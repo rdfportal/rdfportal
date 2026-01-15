@@ -45,9 +45,9 @@ module RDFPortal
         abort e.full_message
       end
 
-      desc 'run <NAME>', 'Publish database'
+      desc 'execute <NAME>', 'Collect statistics'
 
-      def run(name)
+      def execute(name)
         config = RDFPortal.endpoint_config(name, :stat)
         repo = repository(name, config)
 
