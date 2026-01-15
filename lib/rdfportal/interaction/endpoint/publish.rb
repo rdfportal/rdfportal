@@ -39,6 +39,7 @@ module RDFPortal
           end
 
           File.write(repository.working.release_file, dest.basename.to_s) unless repository.working.release_file.exist?
+          File.write(dest.release_file, dest.basename.to_s) unless dest.release_file.exist?
 
           publish.dig(:endpoint, :postprocess).each do |hash|
             case hash[:action]
