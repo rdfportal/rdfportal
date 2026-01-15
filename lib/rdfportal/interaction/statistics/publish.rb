@@ -33,7 +33,7 @@ module RDFPortal
             FileUtils.cp_r(dir, dest, preserve: true)
           end
 
-          publish[:postprocess].each do |hash|
+          publish.dig(:statistics, :postprocess).each do |hash|
             case hash[:action]
             when 'script'
               env = hash[:environments].presence || {}

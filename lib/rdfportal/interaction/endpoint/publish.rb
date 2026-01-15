@@ -40,7 +40,7 @@ module RDFPortal
 
           File.write(repository.working.release_file, dest.basename.to_s) unless repository.working.release_file.exist?
 
-          publish[:postprocess].each do |hash|
+          publish.dig(:endpoint, :postprocess).each do |hash|
             case hash[:action]
             when 'script'
               env = hash[:environments].presence || {}
