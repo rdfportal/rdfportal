@@ -6,5 +6,6 @@ module RDFPortal
     require 'rdfportal/interaction/dataset'
     require 'rdfportal/interaction/endpoint'
     require 'rdfportal/interaction/results'
+    require 'rdfportal/interaction/statistics'
   end
 end
