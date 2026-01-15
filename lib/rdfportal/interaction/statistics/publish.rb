@@ -2,10 +2,10 @@
 
 module RDFPortal
   module Interaction
-    module Endpoint
-      require_relative 'base'
+    require_relative '../endpoint/base'
 
-      class Publish < Base
+    module Statistics
+      class Publish < Endpoint::Base
         ARRAY_POSTPROCESS_ACTIONS = %w[script].freeze
 
         validate :postprocess_config
@@ -16,12 +16,12 @@ module RDFPortal
           dest = if repository.working.release_file.exist?
                    repository.releases.new(File.read(repository.working.release_file).strip)
                  else
-                   repository.releases.new
+                   raise Error, 'The working endpoint has not published yet'
                  end
 
-          dest.mkpath unless dest.exist?
+          raise Error, "The release #{dest} does not exist" unless dest.exist?
 
-          server.publish(dest:)
+          server.stop!
 
           if (dir = repository.working.log_dir).exist? && !dir.empty?
             RDFPortal.logger.info(self.class) { 'Copying log files' }
@@ -33,20 +33,10 @@ module RDFPortal
             FileUtils.cp_r(dir, dest, preserve: true)
           end
 
-          if repository.working.cache_file.exist?
-            RDFPortal.logger.info(self.class) { 'Copying cache file' }
-            FileUtils.cp(repository.working.cache_file, dest, preserve: true)
-          end
-
-          File.write(repository.working.release_file, dest.basename.to_s) unless repository.working.release_file.exist?
-
           publish[:postprocess].each do |hash|
             case hash[:action]
             when 'script'
               env = hash[:environments].presence || {}
-              env['RDFPORTAL_PUBLISH_ENDPOINT_NAME'] = name
-              env['RDFPORTAL_PUBLISH_LATEST_RELEASE_DIR'] = dest.to_s
-              env['RDFPORTAL_PUBLISH_LATEST_RELEASE_VERSION'] = dest.basename.to_s
 
               cmd = if hash[:file].present?
                       File.executable?(hash[:file]) ? [hash[:file]] : ['sh', hash[:file]]
@@ -62,17 +52,6 @@ module RDFPortal
             end
           end
 
-          current = repository.releases.current
-
-          if current.exist?
-            if current.realpath.basename.to_s != dest.basename.to_s
-              current.unlink
-              current.make_symlink(dest.basename)
-            end
-          else
-            current.make_symlink(dest.basename)
-          end
-
           RDFPortal.logger.info(self.class) { "Successfully published to #{dest}" }
 
           if (dir = repository.working.log_dir).exist? && !dir.empty?
@@ -84,13 +63,13 @@ module RDFPortal
         private
 
         def postprocess_config
-          return if (postprocess = publish.dig(:endpoint, :postprocess)).blank?
+          return if (postprocess = publish.dig(:statistics, :postprocess)).blank?
 
           postprocess.each_with_index do |hash, i|
-            attribute = if raw_input(:publish).dig(:endpoint, :postprocess).is_a?(Array)
-                          "publish.endpoint.postprocess[#{i}]"
+            attribute = if raw_input(:publish).dig(:statistics, :postprocess).is_a?(Array)
+                          "publish.statistics.postprocess[#{i}]"
                         else
-                          'publish.endpoint.postprocess'
+                          'publish.statistics.postprocess'
                         end
 
             unless ARRAY_POSTPROCESS_ACTIONS.include?(hash[:action])

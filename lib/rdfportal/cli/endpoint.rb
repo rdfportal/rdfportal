@@ -5,10 +5,15 @@ module RDFPortal
     require_relative 'base'
 
     class Endpoint < Base
+      ENVIRONMENTS = Store::Environment.constants.map { |c| Store::Environment.const_get(c) }
+
       desc 'config <NAME>', 'Parse, resolve and render endpoint configuration'
+      option :environment, aliases: '-e', type: :string, enum: ENVIRONMENTS, desc: 'Endpoint environment'
 
       def config(name)
-        interaction = Interaction::Endpoint::Base.new(name:, **RDFPortal.endpoint_config(name, :load))
+        environment = check_environment
+
+        interaction = Interaction::Endpoint::Base.new(name:, **RDFPortal.endpoint_config(name, environment))
 
         raise(Error, interaction.errors.input_error_messages) unless interaction.valid?
 
@@ -21,7 +26,6 @@ module RDFPortal
 
       desc 'setup <NAME>', 'Setup database'
       option :force, aliases: '-f', type: :boolean, desc: 'Start from empty database even if snapshot is available'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def setup(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -52,7 +56,6 @@ module RDFPortal
 
       desc 'load <NAME>', 'Load datasets'
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not load actually'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def load(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -61,9 +64,6 @@ module RDFPortal
         unless repo.working.exist?
           abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` first."
         end
-
-        # ensure log directory exists
-        repo.working.prepare
 
         RDFPortal.logger = if options[:pretend]
                              RDFPortal::Logger.new($stderr)
@@ -82,14 +82,10 @@ module RDFPortal
         abort e.full_message
       end
 
-      desc 'start <NAME>', 'Start database'
-      option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
+      desc 'start <NAME>', 'Start database for loading'
 
       def start(name)
-        environment = check_environment
-
-        config = RDFPortal.endpoint_config(name, environment)
+        config = RDFPortal.endpoint_config(name, :load)
         repo = repository(name, config)
 
         unless repo.working.exist?
@@ -98,26 +94,22 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        Interaction::Endpoint::Start.run!(name:, **config, repository: repo, environment:)
+        Interaction::Endpoint::Start.run!(name:, **config, repository: repo, environment: :load)
       rescue Error => e
         abort e.message
       rescue StandardError => e
         abort e.full_message
       end
 
-      desc 'stop <NAME>', 'Stop database'
-      option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
+      desc 'stop <NAME>', 'Stop database for loading'
 
       def stop(name)
-        environment = check_environment
-
-        config = RDFPortal.endpoint_config(name, environment)
+        config = RDFPortal.endpoint_config(name, :load)
         repo = repository(name, config)
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        Interaction::Endpoint::Stop.run!(name:, **config, repository: repo)
+        Interaction::Endpoint::Stop.run!(name:, **config, repository: repo, environment: :load)
       rescue Error => e
         abort e.message
       rescue StandardError => e
@@ -135,9 +127,6 @@ module RDFPortal
           abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` first."
         end
 
-        # ensure log directory exists
-        repo.working.prepare
-
         RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('publish.log'))
 
         action = Interaction::Endpoint::Publish.run(name:, **config, repository: repo)
@@ -149,34 +138,8 @@ module RDFPortal
         abort e.full_message
       end
 
-      desc 'statistics <NAME>', 'Publish database'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
-
-      def statistics(name)
-        config = RDFPortal.endpoint_config(name, :stat)
-        repo = repository(name, config)
-
-        unless repo.working.exist?
-          abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}` and `rdfportal endpoint load #{name}` first."
-        end
-
-        # ensure log directory exists
-        repo.working.prepare
-
-        RDFPortal.logger = RDFPortal::Logger.new(repo.working.log_dir.join('statistics.log'))
-
-        action = Interaction::Endpoint::Statistics.run(name:, **config, repository: repo, environment: :stat)
-
-        raise(Error, action.errors.input_error_messages) unless action.valid?
-      rescue Error, ActiveInteraction::InvalidInteractionError => e
-        abort e.message
-      rescue StandardError => e
-        abort e.full_message
-      end
-
       desc 'console <NAME>', 'Start console for debugging'
       option :environment, aliases: '-e', type: :string, desc: 'Endpoint environment'
-      option :work_dir, aliases: '-w', type: :string, desc: 'Use temporary working directory'
 
       def console(name, command = nil)
         RDFPortal.logger = RDFPortal::Logger.new($stderr, level: ::Logger::Severity::DEBUG)

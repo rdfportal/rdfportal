@@ -10,6 +10,7 @@ module RDFPortal
     require 'rdfportal/cli/endpoint'
     require 'rdfportal/cli/job'
     require 'rdfportal/cli/setup'
+    require 'rdfportal/cli/statistics'
 
     class Main < Thor
       class << self
@@ -34,6 +35,9 @@ module RDFPortal
 
       desc 'job [SUBCOMMAND]', 'Commands for job runner'
       subcommand :job, Job
+
+      desc 'statistics [SUBCOMMAND]', 'Commands for statistics'
+      subcommand :statistics, Statistics
 
       desc 'version', 'Show version number'
 

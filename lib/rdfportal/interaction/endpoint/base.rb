@@ -43,12 +43,25 @@ module RDFPortal
         end
 
         hash :publish, default: {} do
-          flex_array :postprocess, default: [] do
-            hash do
-              string :action
-              string :file, default: nil
-              string :script, default: nil
-              hash :environments, default: {}, strip: false
+          hash :endpoint, default: {} do
+            flex_array :postprocess, default: [] do
+              hash do
+                string :action
+                string :file, default: nil
+                string :script, default: nil
+                hash :environments, default: {}, strip: false
+              end
+            end
+          end
+
+          hash :statistics, default: {} do
+            flex_array :postprocess, default: [] do
+              hash do
+                string :action
+                string :file, default: nil
+                string :script, default: nil
+                hash :environments, default: {}, strip: false
+              end
             end
           end
         end

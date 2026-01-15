@@ -106,8 +106,6 @@ module RDFPortal
         end
 
         def setup_loader(**options)
-          start_if_needed!
-
           return unless connection.list_errors.any?
 
           RDFPortal.logger.info(self.class) { 'Clear previous errors' }
