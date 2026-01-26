@@ -7,13 +7,18 @@ module RDFPortal
   module ExternalCommand
     # @return [TTY::Command::Result]
     def run_cmd(*cmd, **options)
-      runner = TTY::Command.new(printer: RDFPortal::ExternalCommand::LogPrinter)
-      runner.printer.stdout = options[:stdout]
-      runner.printer.stderr = options[:stderr]
-      runner.printer.formatter = options[:formatter]
-      runner.printer.logger = options[:logger] || RDFPortal.logger
-      runner.printer.command_log = options[:command_log]
-      runner.printer.caller = is_a?(Class) ? self : self.class
+      runner = if options[:printer]
+                 TTY::Command.new(printer: options[:printer])
+               else
+                 TTY::Command.new(printer: RDFPortal::ExternalCommand::LogPrinter).tap do |x|
+                   x.printer.stdout = options[:stdout]
+                   x.printer.stderr = options[:stderr]
+                   x.printer.formatter = options[:formatter]
+                   x.printer.logger = options[:logger] || RDFPortal.logger
+                   x.printer.command_log = options[:command_log]
+                   x.printer.caller = is_a?(Class) ? self : self.class
+                 end
+               end
 
       method = options[:exception] ? :run : :run!
 
@@ -52,6 +57,25 @@ module RDFPortal
 
     def extract_output(value)
       (value || '').strip.empty? ? 'Nothing written' : value.strip
+    end
+
+    def find_bin(name)
+      case name
+      when 'split'
+        if (ret = run_cmd('which', name, printer: :null)).success?
+          path = ret.out.chomp
+          return path if run_cmd(path, '--version', printer: :null).success?
+        end
+
+        if (ret = run_cmd('which', 'gsplit', printer: :null)).success?
+          path = ret.out.chomp
+          return path if run_cmd(path, '--version', printer: :null).success?
+        end
+
+        raise Error, 'GNU split not found'
+      else
+        run_cmd!('which', name, printer: :null).out.chomp
+      end
     end
 
     class LogPrinter < TTY::Command::Printers::Abstract
@@ -109,20 +133,30 @@ module RDFPortal
 
         message = @formatter.call(message) if @formatter
 
-        if cmd.only_output_on_error && !data.nil?
-          data << "#{message}\n"
-        elsif stream == :out
-          if @stdout.nil? && @stdout != false
-            output << "#{message}\n"
-          elsif @stdout.respond_to?(:write)
-            @stdout.write(message, "\n")
+        force_encode = false
+
+        begin
+          if cmd.only_output_on_error && !data.nil?
+            data << "#{message}\n"
+          elsif stream == :out
+            if @stdout.nil? && @stdout != false
+              output << "#{message}\n"
+            elsif @stdout.respond_to?(:write)
+              @stdout.write(message, "\n")
+            end
+          elsif stream == :err
+            if @stderr.nil?
+              output << "#{message}\n"
+            elsif @stderr.respond_to?(:write)
+              @stderr.write(message, "\n")
+            end
           end
-        elsif stream == :err
-          if @stderr.nil?
-            output << "#{message}\n"
-          elsif @stderr.respond_to?(:write)
-            @stderr.write(message, "\n")
-          end
+        rescue Encoding::UndefinedConversionError => e
+          raise e if force_encode
+
+          message = message.force_encoding('UTF-8')
+          force_encode = true
+          retry
         end
       end
     end

@@ -15,6 +15,21 @@ module RDFPortal
 
       desc 'Check the system and configuration for RDFPortal'
 
+      def check_utilities
+        say 'Checking GNU split...'
+
+        status = check_status('split --version >/dev/null 2>&1')
+
+        unless status
+          say 'Checking gsplit...'
+          status = check_status('gsplit --version >/dev/null 2>&1')
+        end
+
+        result(status, 'GNU split installation')
+
+        prescriptions.push 'Install GNU split' unless status
+      end
+
       def check_java
         say 'Checking java...'
 

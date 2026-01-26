@@ -84,12 +84,11 @@ module RDFPortal
       def convert(name)
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        config = RDFPortal.graph_config(name)
+        files = RDFPortal.graph_config(name).flat_map { |x| Dir.glob(x[:pattern]) }
+                         .map { |x| Pathname.new(x).realpath }
+                         .sort
 
         output_dir = Pathname.new(options[:output])
-        files = config.flat_map { |x| Dir.glob(x[:pattern]) }
-                      .map { |x| Pathname.new(x).realpath }
-                      .sort
 
         success = []
 
