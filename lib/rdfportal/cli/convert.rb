@@ -36,12 +36,12 @@ module RDFPortal
             'java',
             '-jar',
             %("#{jar}"),
-            %("#{file}")
+            '-o',
+            '<('
           ]
 
           if options[:split]
-            cmd.push('|',
-                     find_bin('split'),
+            cmd.push(find_bin('split'),
                      "--lines=#{LINES_PER_FILE}",
                      '--suffix-length=10',
                      '--numeric-suffixes=0',
@@ -50,8 +50,11 @@ module RDFPortal
                      '-',
                      '.')
           else
-            cmd.push('|', 'gzip', '>', %("#{path}.nt.gz"))
+            cmd.push('gzip', '>', %("#{path}.nt.gz"))
           end
+
+          cmd << ')'
+          cmd << %("#{file}")
 
           run_cmd!(cmd.join(' '))
 
