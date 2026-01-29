@@ -87,19 +87,19 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
+        max_procs = (options[:max_procs] || 1).to_i
+        unless (1..Parallel.processor_count).cover?(max_procs)
+          raise Error, "Invalid max_procs: #{max_procs} (must be between 1 and #{Parallel.processor_count})"
+        end
+
         files = RDFPortal.graph_config(name).flat_map { |x| Dir.glob(x[:pattern]) }
                          .map { |x| Pathname.new(x).realpath }
                          .sort
 
         output_dir = Pathname.new(options[:output])
 
-        max_procs = (options[:max_procs] || 1).to_i
-        unless (1..Parallel.processor_count).cover?(max_procs)
-          raise Error, "Invalid max_procs: #{max_procs} (must be between 1 and #{Parallel.processor_count})"
-        end
-
         success = Parallel.filter_map(files, in_processes: max_procs) do |file|
-          dest = output_dir.join(x.relative_path_from(RDFPortal.datasets_dir.realpath)).dirname
+          dest = output_dir.join(file.relative_path_from(RDFPortal.datasets_dir.realpath)).dirname
 
           basename = file.basename
           extname = basename.extname
