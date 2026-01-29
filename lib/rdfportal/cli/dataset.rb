@@ -78,10 +78,13 @@ module RDFPortal
 
       desc 'convert <NAME>', 'Convert dataset to ntriples'
       option :output, aliases: '-o', type: :string, required: true, desc: 'Output directory'
+      option :max_procs, aliases: '-P', type: :integer, desc: 'Maximum number of parallel processes'
 
       SUPPORTED_COMPRESSION_FORMATS = %w[.gz .bz2 .xz].freeze
 
       def convert(name)
+        require 'parallel'
+
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
         files = RDFPortal.graph_config(name).flat_map { |x| Dir.glob(x[:pattern]) }
@@ -90,28 +93,26 @@ module RDFPortal
 
         output_dir = Pathname.new(options[:output])
 
-        success = []
-
-        files.each do |x|
+        success = Parallel.filter_map(files, in_processes: options[:max_procs]) do |file|
           dest = output_dir.join(x.relative_path_from(RDFPortal.datasets_dir.realpath)).dirname
 
-          basename = x.basename
+          basename = file.basename
           extname = basename.extname
           extname = basename.basename(extname).extname + extname if SUPPORTED_COMPRESSION_FORMATS.include?(extname)
 
           if dest.join("#{basename.basename(extname)}.nt.gz").exist? ||
              dest.join("#{basename.basename(extname)}.0.nt.gz").exist?
-            RDFPortal.logger.info('SKIP') { x.to_s }
+            RDFPortal.logger.info('SKIP') { file.to_s }
             next
           end
 
-          Convert.new.invoke(:ntriples, [x.to_s], force: true, output: dest.to_s, split: true)
+          Convert.new.invoke(:ntriples, [file.to_s], force: true, output: dest.to_s, split: true)
 
-          success << x
-
-          RDFPortal.logger.info('SUCCESS') { x.to_s }
+          RDFPortal.logger.info('SUCCESS') { file.to_s }
+          file
         rescue StandardError => e
-          RDFPortal.logger.error('FAIL') { "#{x}\n#{e.full_message}" }
+          RDFPortal.logger.error('FAIL') { "#{file}\n#{e.full_message}" }
+          nil
         end
 
         links = success.filter_map do |x|
