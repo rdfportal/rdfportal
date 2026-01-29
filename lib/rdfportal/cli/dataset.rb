@@ -78,7 +78,7 @@ module RDFPortal
 
       desc 'convert <NAME>', 'Convert dataset to ntriples'
       option :output, aliases: '-o', type: :string, required: true, desc: 'Output directory'
-      option :max_procs, aliases: '-P', type: :integer, desc: 'Maximum number of parallel processes'
+      option :max_procs, aliases: '-P', type: :integer, default: 1, desc: 'Maximum number of parallel processes'
 
       SUPPORTED_COMPRESSION_FORMATS = %w[.gz .bz2 .xz].freeze
 
@@ -93,7 +93,12 @@ module RDFPortal
 
         output_dir = Pathname.new(options[:output])
 
-        success = Parallel.filter_map(files, in_processes: options[:max_procs]) do |file|
+        max_procs = options[:max_procs] || 1
+        unless (1..Parallel.processor_count).cover?(max_procs)
+          raise Error, "Invalid max_procs: #{max_procs} (must be between 1 and #{Parallel.processor_count})"
+        end
+
+        success = Parallel.filter_map(files, in_processes: max_procs) do |file|
           dest = output_dir.join(x.relative_path_from(RDFPortal.datasets_dir.realpath)).dirname
 
           basename = file.basename
