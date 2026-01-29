@@ -35,7 +35,7 @@ module RDFPortal
           cmd = [
             'java',
             '-jar',
-            %("#{jar}"),
+            %(\\"#{jar}\\"),
             '-o',
             '>('
           ]
@@ -46,17 +46,17 @@ module RDFPortal
                      '--suffix-length=10',
                      '--numeric-suffixes=0',
                      '--additional-suffix=.nt.gz',
-                     %(--filter='gzip > "#{path}$FILE"'),
+                     %(--filter='gzip > \\"#{path}\\$FILE\\"'),
                      '-',
                      '.')
           else
-            cmd.push('gzip', '>', %("#{path}.nt.gz"))
+            cmd.push('gzip', '>', %(\\"#{path}.nt.gz\\"))
           end
 
           cmd << ')'
-          cmd << %("#{file}")
+          cmd << %(\\"#{file}\\")
 
-          run_cmd!(cmd.join(' '))
+          run_cmd!(%(bash -c "#{cmd.join(' ')}"), stderr: :info)
 
           FileUtils.mkdir_p(options[:output]) if options[:output]
 
