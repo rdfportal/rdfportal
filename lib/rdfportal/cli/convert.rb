@@ -37,7 +37,7 @@ module RDFPortal
             '-jar',
             %("#{jar}"),
             '-o',
-            '<('
+            '>('
           ]
 
           if options[:split]
