@@ -59,6 +59,7 @@ module RDFPortal
           run_cmd!(%(bash -c "#{cmd.join(' ')}"), stderr: :info)
 
           FileUtils.mkdir_p(options[:output]) if options[:output]
+          output = options[:output] || File.dirname(file)
 
           if options[:split]
             re = /\.(\d+)\.nt\.gz$/
@@ -68,14 +69,14 @@ module RDFPortal
             Dir.each_child(dir) do |child|
               n = child[re, 1].to_i
               src = File.expand_path(child, dir)
-              dst = File.expand_path(child.sub(re, ".#{n}.nt.gz"), options[:output])
+              dst = File.expand_path(child.sub(re, ".#{n}.nt.gz"), output)
 
               FileUtils.mv(src, dst)
             end
 
             FileUtils.mv(dst, dst.sub(re, '.nt.gz')) if n.zero? && dst
           else
-            FileUtils.mv("#{path}.nt.gz", options[:output])
+            FileUtils.mv("#{path}.nt.gz", output)
           end
         end
       rescue Error => e
