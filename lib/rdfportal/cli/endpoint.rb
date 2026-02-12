@@ -35,7 +35,7 @@ module RDFPortal
           if yes?('Working directory already exists. Remove it? [y/N]', :yellow)
             RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-            Interaction::Endpoint::Stop.run!(name:, **config, repository: repo)
+            Interaction::Endpoint::Stop.run!(name:, **config, repository: repo, options: { force: true })
             FileUtils.rm_rf(repo.working)
           else
             abort 'Aborted.'

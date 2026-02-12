@@ -52,12 +52,12 @@ module RDFPortal
           RDFPortal.logger.info(self.class) { "Server started at #{options[:port]}" }
         end
 
-        def stop!
+        def stop!(**options)
           return false unless running_by_pidfile?
 
           RDFPortal.logger.info(self.class) { 'Stopping server ...' }
 
-          connection.checkpoint
+          connection.checkpoint unless options[:force]
 
           wait_until_shutdown do
             connection.shutdown
