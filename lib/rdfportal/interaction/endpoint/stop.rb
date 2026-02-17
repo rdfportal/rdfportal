@@ -5,11 +5,11 @@ module RDFPortal
     module Endpoint
       require_relative 'base'
 
-      hash :options do
-        boolean :force, default: false
-      end
-
       class Stop < Base
+        hash :options do
+          boolean :force, default: false
+        end
+
         def execute
           server.stop!(**options)
         end
