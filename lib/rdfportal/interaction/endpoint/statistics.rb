@@ -14,7 +14,9 @@ module RDFPortal
         def execute
           if server.environment != Store::Environment::STAT
             RDFPortal.logger.info(self.class) { 'Restart server for statistics' }
-            server.stop!
+
+            CLI::Endpoint.new.invoke(:stop, name) if server.environment == Store::Environment::LOAD
+
             server.setup
           end
 
