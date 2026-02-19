@@ -195,7 +195,7 @@ module RDFPortal
         mirror << "#{File.dirname(uri.path)}/"
       end
 
-      mirror << "./#{output}"
+      mirror << output.present ? "./#{output}" : '.'
 
       ret = if pretend
               pretend_output&.with_indent do |out|
@@ -280,7 +280,7 @@ module RDFPortal
                uri.path
              end
 
-      cmd << "./#{output}"
+      cmd << output.present ? "./#{output}" : '.'
 
       ret = if pretend
               pretend_output&.with_indent do |out|
