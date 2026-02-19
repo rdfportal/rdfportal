@@ -53,14 +53,15 @@ module RDFPortal
         end
 
         def stop!(**options)
-          return false unless running_by_pidfile?
+          return false unless (pid = running_by_pidfile?)
 
           RDFPortal.logger.info(self.class) { 'Stopping server ...' }
 
           connection.checkpoint unless options[:force]
 
           wait_until_shutdown do
-            connection.shutdown
+            # connection.shutdown
+            Process.kill('INT', pid)
             @connection = nil
           end
 
@@ -259,19 +260,19 @@ module RDFPortal
         end
 
         def running_by_pidfile?
-          return false unless pid_file.exist?
+          return unless pid_file.exist?
 
           pid = Integer(File.read(pid_file).sub('VIRT_PID=', '').strip, exception: false)
 
-          return false unless pid
+          return unless pid
 
           Process.kill(0, pid)
 
-          true
+          pid
         rescue Errno::ESRCH
-          false
+          nil
         rescue Errno::EPERM
-          true
+          pid
         end
 
         def wait_until_online(timeout: 300)
