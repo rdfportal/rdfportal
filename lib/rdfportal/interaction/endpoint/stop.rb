@@ -6,7 +6,7 @@ module RDFPortal
       require_relative 'base'
 
       class Stop < Base
-        hash :options do
+        hash :options, default: {} do
           boolean :force, default: false
         end
 
