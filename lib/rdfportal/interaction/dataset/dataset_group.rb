@@ -68,7 +68,8 @@ module RDFPortal
 
               next if fetch_error_or_empty?
 
-              @results << compose(Update, group:, preserve:, directory:, metadata:)
+              r = compose(Update, group:, preserve:, directory:, metadata:)
+              @results.concat(r.is_a?(Array) ? r.flatten : [r])
             end
 
             RDFPortal.logger.info(self.class) { "Finished fetching #{group_name} in #{t.readable_duration}" } if group
@@ -107,8 +108,8 @@ module RDFPortal
           pretend_output.puts repository.to_s if pretend
 
           fetch.each do |hash|
-            results = compose(Location, **hash, directory: target_dir, parameters:, continue:, pretend:)
-            @results.concat(results)
+            r = compose(Location, **hash, directory: target_dir, parameters:, continue:, pretend:)
+            @results.concat(r.is_a?(Array) ? r.flatten : [r])
           end
         rescue StandardError => e
           RDFPortal.logger.error(self.class) { e.full_message }
@@ -161,7 +162,8 @@ module RDFPortal
           files = target_dir.find.filter(&:file?).map { |x| x.relative_path_from(target_dir) }
 
           postprocess.each do |hash|
-            @results << send("process_#{hash[:action]}", hash, files)
+            r = send("process_#{hash[:action]}", hash, files)
+            @results.concat(r.is_a?(Array) ? r.flatten : [r])
           end
         rescue StandardError => e
           RDFPortal.logger.error(self.class) { e.full_message }
