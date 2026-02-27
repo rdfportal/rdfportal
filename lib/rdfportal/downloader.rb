@@ -32,7 +32,7 @@ module RDFPortal
         cmd << "Accept:#{v}"
       end
 
-      if output
+      if output.present?
         cmd << '--output-document'
         cmd << output
       else
@@ -195,7 +195,11 @@ module RDFPortal
         mirror << "#{File.dirname(uri.path)}/"
       end
 
-      mirror << output.present? ? "./#{output}" : '.'
+      mirror << if output.present?
+                  "./#{output}"
+                else
+                  '.'
+                end
 
       ret = if pretend
               pretend_output&.with_indent do |out|
@@ -280,7 +284,11 @@ module RDFPortal
                uri.path
              end
 
-      cmd << output.present? ? "./#{output}" : '.'
+      cmd << if output.present?
+               "./#{output}"
+             else
+               '.'
+             end
 
       ret = if pretend
               pretend_output&.with_indent do |out|
