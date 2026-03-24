@@ -37,6 +37,7 @@ module RDFPortal
             case hash[:action]
             when 'script'
               env = hash[:environments].presence || {}
+              env['RDFPORTAL_DATASETS_DIR'] = RDFPortal.config_datasets_dir.to_s
 
               cmd = if hash[:file].present?
                       File.executable?(hash[:file]) ? [hash[:file]] : ['sh', hash[:file]]

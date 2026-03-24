@@ -30,6 +30,8 @@ module RDFPortal
               }
             end
 
+            date = Time.now.strftime('%Y-%m-%d')
+
             aggregate(gspo_count_input).each do |graph, stat|
               dataset = if graph_disabled?
                           name
@@ -47,6 +49,7 @@ module RDFPortal
             statistics.each_value do |stat|
               stat[:class_count] = stat.delete(:classes).size
               stat[:property_count] = stat.delete(:properties).size
+              stat[:issued_at] = date
             end
 
             statistics
