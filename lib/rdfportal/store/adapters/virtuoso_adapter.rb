@@ -161,7 +161,9 @@ module RDFPortal
           start_if_needed!
         end
 
-        def cleanup_loader(**options); end
+        def cleanup_loader(**options)
+          stop!
+        end
 
         def publish(**options)
           return unless options[:dest]
