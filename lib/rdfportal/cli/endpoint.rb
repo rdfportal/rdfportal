@@ -24,6 +24,30 @@ module RDFPortal
         abort e.full_message
       end
 
+      desc 'fetch <NAME>', 'Fetch datasets loaded to the endpoint'
+      option :continue, aliases: '-c', type: :boolean, desc: 'Continue getting last failed dataset'
+      option :from, aliases: '-f', type: :string, desc: 'Start from this dataset'
+      option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
+
+      def fetch(name)
+        RDFPortal.logger = RDFPortal::Logger.new($stderr)
+
+        config = RDFPortal.endpoint_config(name, :load)
+
+        datasets = config[:datasets].reject { |x| x.dig(:fetch, :disable) }
+
+        if options[:from] && (index = datasets.index { |x| x[:name] == options[:from] })
+          datasets = datasets[index..]
+        end
+
+        datasets.each do |dataset|
+          next if dataset.dig(:fetch, :disable) == true
+          next unless File.exist?(RDFPortal.dataset_config_path(dataset[:name]))
+
+          Dataset.new.invoke(:fetch, [dataset[:name]], **options.slice(:continue, :pretend))
+        end
+      end
+
       desc 'setup <NAME>', 'Setup database'
       option :force, aliases: '-f', type: :boolean, desc: 'Start from empty database even if snapshot is available'
 
