@@ -54,8 +54,12 @@ module RDFPortal
     hash
   end
 
+  def self.dataset_config_path(name)
+    config_datasets_dir.join(name, DATASET_FILE_NAME)
+  end
+
   def self.dataset_config(name, exception: true)
-    path = config_datasets_dir.join(name, DATASET_FILE_NAME)
+    path = dataset_config_path(name)
 
     unless path.exist?
       raise Error, "File not found: #{path}" if exception
