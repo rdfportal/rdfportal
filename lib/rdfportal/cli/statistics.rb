@@ -66,6 +66,31 @@ module RDFPortal
         abort e.full_message
       end
 
+      desc 'diff <NAME>', 'Show differences between latest statistics'
+
+      def diff(name)
+        config = RDFPortal.endpoint_config(name, :stat)
+        repo = repository(name, config)
+
+        unless repo.working.exist?
+          abort "Working directory does not exist. Run `rdfportal endpoint setup #{name}`, `rdfportal endpoint load #{name}` and `rdfportal statistics run #{name}` first."
+        end
+
+        unless (current = repo.releases.current.stat_dir.join('statistics.yml')).exist?
+          abort 'Current statistics file does not exist.'
+        end
+
+        unless (working = repo.working.stat_dir.join('statistics.yml')).exist?
+          abort 'Working statistics file does not exist.'
+        end
+
+        run "diff --side-by-side #{current} #{working}", verbose: false
+      rescue Error, ActiveInteraction::InvalidInteractionError => e
+        abort e.message
+      rescue StandardError => e
+        abort e.full_message
+      end
+
       desc 'publish <NAME>', 'Publish statistics'
 
       def publish(name)

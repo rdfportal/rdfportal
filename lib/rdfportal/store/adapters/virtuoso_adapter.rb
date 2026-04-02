@@ -211,7 +211,7 @@ module RDFPortal
 
           unless (stat = output_dir.join('statistics.yml')).exist?
             RDFPortal.logger.info(self.class) { 'Aggregating statistics...' }
-            File.write(stat, YAML.dump(statistics.statistics(count)))
+            File.write(stat, YAML.dump(statistics.statistics(count).sort.to_h))
           end
 
           void = if options[:void_format] == 'ntriples'
