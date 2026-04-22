@@ -95,9 +95,9 @@ module RDFPortal
 
           return unless init
 
-          connection.enable_cors if options.dig(:database, :options, :cors) == true
-          connection.enable_service if options.dig(:database, :options, :federated_query) == true
-          connection.disable_text_index if options.dig(:database, :options, :text_index) == false
+          connection.enable_cors if self.options.dig(:database, :options, :cors) == true
+          connection.enable_service if self.options.dig(:database, :options, :federated_query) == true
+          connection.disable_text_index if self.options.dig(:database, :options, :text_index) == false
 
           connection.checkpoint
         end
