@@ -19,6 +19,8 @@ module RDFPortal
           end
 
           server.statistics(output_dir: repository.working.stat_dir, void_format: stat[:void_format])
+
+          server.stop!
         end
       end
     end
