@@ -126,6 +126,7 @@ module RDFPortal
       end
 
       desc 'stop <NAME>', 'Stop database for loading'
+      option :force, aliases: '-f', type: :boolean, desc: 'Stop endpoint without graceful shutdown'
 
       def stop(name)
         config = RDFPortal.endpoint_config(name, :load)
@@ -133,7 +134,7 @@ module RDFPortal
 
         RDFPortal.logger = RDFPortal::Logger.new($stderr)
 
-        Interaction::Endpoint::Stop.run!(name:, **config, repository: repo, environment: :load)
+        Interaction::Endpoint::Stop.run!(name:, **config, repository: repo, force: options[:force], environment: :load)
       rescue Error => e
         abort e.message
       rescue StandardError => e
