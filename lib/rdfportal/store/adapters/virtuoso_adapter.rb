@@ -214,19 +214,16 @@ module RDFPortal
             File.write(stat, YAML.dump(statistics.statistics(count).sort.to_h))
           end
 
-          void = if options[:void_format] == 'ntriples'
-                   output_dir.join('void_plus.nt')
-                 else
-                   output_dir.join('void_plus.ttl')
-                 end
+          void = output_dir.join("void_plus.#{options[:void_format] == 'ntriples' ? 'nt' : 'ttl'}.gz")
 
           return if void.exist?
 
           RDFPortal.logger.info(self.class) { "Generating VoID(#{options[:void_format]})..." }
-          if options[:void_format] == 'ntriples'
-            File.write(void, statistics.void(count).dump(:ntriples))
-          else
-            File.write(void, statistics.void(count).dump(:turtle, prefixes: Statistics::Vocab.prefixes))
+
+          File.open(void, 'w') do |file|
+            gz = Zlib::GzipWriter.new(file, Zlib::DEFAULT_COMPRESSION, Zlib::DEFAULT_STRATEGY)
+            statistics.write_void(gz, count, format: options[:void_format] == 'ntriples' ? :ntriples : :ttl)
+            gz.close
           end
         end
 

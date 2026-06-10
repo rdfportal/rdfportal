@@ -254,78 +254,84 @@ module RDFPortal
 
           SPARQL_DEFAULT_GRAPH = Vocab::NS['sparql-default-graph']
 
-          def void(gspo_count_input)
-            RDF::Graph.new do |g|
+          def write_void(file, gspo_count_input, format: :ttl)
+            RDF::Writer.for(format).new(file, validate: false) do |writer|
+              if format == :ttl
+                Statistics::Vocab.prefixes.each do |pname, uri|
+                  writer.prefix pname, uri
+                end
+              end
+
               svcroot = Vocab::NS[:svcroot]
               root = Vocab::NS[:root]
               crawl_log = Vocab::NS[:crawlLog]
 
-              g << [svcroot, RDF.type, RDF::Vocab::SD[:Service]]
-              g << [svcroot, RDF::Vocab::SD[:defaultDataset], root]
-              g << [root, RDF.type, RDF::Vocab::SD[:Dataset]]
-              g << [root, Vocab::SBM[:crawlLog], crawl_log]
-              g << [crawl_log, RDF.type, Vocab::SBM[:CrawlLog]]
-              g << [crawl_log, Vocab::SBM[:crawlStartTime], RDF::Literal::DateTime.new(DateTime.now)]
+              writer.write_triple(svcroot, RDF.type, RDF::Vocab::SD[:Service])
+              writer.write_triple(svcroot, RDF::Vocab::SD[:defaultDataset], root)
+              writer.write_triple(root, RDF.type, RDF::Vocab::SD[:Dataset])
+              writer.write_triple(root, Vocab::SBM[:crawlLog], crawl_log)
+              writer.write_triple(crawl_log, RDF.type, Vocab::SBM[:CrawlLog])
+              writer.write_triple(crawl_log, Vocab::SBM[:crawlStartTime], RDF::Literal::DateTime.new(DateTime.now))
 
               aggregate(gspo_count_input).each do |graph, stat|
                 graph = Vocab::NS[hashed(graph)]
 
                 if graph.start_with?('http')
-                  g << [root, RDF::Vocab::SD[:defaultGraph], SPARQL_DEFAULT_GRAPH]
-                  g << [SPARQL_DEFAULT_GRAPH, RDF.type, RDF::Vocab::SD[:Graph]]
+                  writer.write_triple(root, RDF::Vocab::SD[:defaultGraph], SPARQL_DEFAULT_GRAPH)
+                  writer.write_triple(SPARQL_DEFAULT_GRAPH, RDF.type, RDF::Vocab::SD[:Graph])
 
-                  g << [root, RDF::Vocab::SD[:namedGraph], graph]
-                  g << [graph, RDF.type, RDF::Vocab::SD[:NamedGraph]]
-                  g << [graph, RDF::Vocab::SD.name, RDF::URI(graph)]
+                  writer.write_triple(root, RDF::Vocab::SD[:namedGraph], graph)
+                  writer.write_triple(graph, RDF.type, RDF::Vocab::SD[:NamedGraph])
+                  writer.write_triple(graph, RDF::Vocab::SD.name, RDF::URI(graph))
                 else
-                  g << [root, RDF::Vocab::SD[:defaultGraph], graph]
-                  g << [graph, RDF.type, RDF::Vocab::SD[:Graph]]
+                  writer.write_triple(root, RDF::Vocab::SD[:defaultGraph], graph)
+                  writer.write_triple(graph, RDF.type, RDF::Vocab::SD[:Graph])
                 end
 
                 if (url = options.dig(:stat, :endpoint))
-                  g << [graph, RDF::Vocab::SD[:endpoint], RDF::URI(url)]
-                  g << [graph, RDF::Vocab::VOID[:sparqlEndpoint], RDF::URI(url)]
+                  writer.write_triple(graph, RDF::Vocab::SD[:endpoint], RDF::URI(url))
+                  writer.write_triple(graph, RDF::Vocab::VOID[:sparqlEndpoint], RDF::URI(url))
                 end
 
-                g << [graph, RDF::Vocab::SD[:graph], graph]
-                g << [graph, RDF.type, RDF::Vocab::SD[:Graph]]
-                g << [graph, RDF.type, RDF::Vocab::VOID[:Dataset]]
+                writer.write_triple(graph, RDF::Vocab::SD[:graph], graph)
+                writer.write_triple(graph, RDF.type, RDF::Vocab::SD[:Graph])
+                writer.write_triple(graph, RDF.type, RDF::Vocab::VOID[:Dataset])
 
                 if (v = stat[:total_entity_count])
-                  g << [graph, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(v.to_i)]
+                  writer.write_triple(graph, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(v.to_i))
                 end
                 if (v = stat[:distinct_subject_count])
-                  g << [graph, RDF::Vocab::VOID[:distinctSubjects], RDF::Literal::Integer.new(v.to_i)]
+                  writer.write_triple(graph, RDF::Vocab::VOID[:distinctSubjects], RDF::Literal::Integer.new(v.to_i))
                 end
                 if (v = stat[:distinct_object_count])
-                  g << [graph, RDF::Vocab::VOID[:distinctObjects], RDF::Literal::Integer.new(v.to_i)]
+                  writer.write_triple(graph, RDF::Vocab::VOID[:distinctObjects], RDF::Literal::Integer.new(v.to_i))
                 end
 
                 if (classes = stat[:classes]).present?
-                  g << [graph, RDF::Vocab::VOID[:classes], RDF::Literal::Integer.new(classes.size)]
+                  writer.write_triple(graph, RDF::Vocab::VOID[:classes], RDF::Literal::Integer.new(classes.size))
 
                   classes.each do |klass|
                     dataset = Vocab::NS[hashed(graph, klass, prefix: 'Class:')]
                     c = stat[:distinct_class_entity_count].find { |x| x[:class] == klass }&.fetch(:total) || 0
 
-                    g << [graph, RDF::Vocab::VOID[:classPartition], dataset]
-                    g << [dataset, RDF.type, RDF::Vocab::VOID[:Dataset]]
-                    g << [dataset, RDF::Vocab::VOID[:class], RDF::URI(klass)]
-                    g << [dataset, RDF::Vocab::VOID[:entities], RDF::Literal::Integer.new(c)]
+                    writer.write_triple(graph, RDF::Vocab::VOID[:classPartition], dataset)
+                    writer.write_triple(dataset, RDF.type, RDF::Vocab::VOID[:Dataset])
+                    writer.write_triple(dataset, RDF::Vocab::VOID[:class], RDF::URI(klass))
+                    writer.write_triple(dataset, RDF::Vocab::VOID[:entities], RDF::Literal::Integer.new(c))
                   end
                 end
 
                 if (properties = stat[:properties]).present?
-                  g << [graph, RDF::Vocab::VOID[:properties], RDF::Literal::Integer.new(properties.size)]
+                  writer.write_triple(graph, RDF::Vocab::VOID[:properties], RDF::Literal::Integer.new(properties.size))
 
                   properties.each do |property|
                     dataset = Vocab::NS[hashed(graph, property, prefix: 'Property:')]
                     c = stat[:pred_count].find { |x| x[:predicate] == property }&.fetch(:total) || 0
 
-                    g << [graph, RDF::Vocab::VOID[:propertyPartition], dataset]
-                    g << [dataset, RDF.type, RDF::Vocab::VOID[:Dataset]]
-                    g << [dataset, RDF::Vocab::VOID[:property], RDF::URI(property)]
-                    g << [dataset, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(c)]
+                    writer.write_triple(graph, RDF::Vocab::VOID[:propertyPartition], dataset)
+                    writer.write_triple(dataset, RDF.type, RDF::Vocab::VOID[:Dataset])
+                    writer.write_triple(dataset, RDF::Vocab::VOID[:property], RDF::URI(property))
+                    writer.write_triple(dataset, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(c))
                   end
                 end
 
@@ -336,17 +342,17 @@ module RDFPortal
                     name = "#{x[:subject]}#{x[:predicate]}#{x[:object].presence || x[:dtype]}"
                     class_relation = Vocab::NS[hashed(graph, name, prefix: 'ClassRels:')]
 
-                    g << [dataset, Vocab::SBM[:classRelation], class_relation]
-                    g << [class_relation, RDF.type, Vocab::SBM[:ClassRelation]]
-                    g << [class_relation, Vocab::SBM[:subjectClass], RDF::URI(x[:subject])]
+                    writer.write_triple(dataset, Vocab::SBM[:classRelation], class_relation)
+                    writer.write_triple(class_relation, RDF.type, Vocab::SBM[:ClassRelation])
+                    writer.write_triple(class_relation, Vocab::SBM[:subjectClass], RDF::URI(x[:subject]))
 
-                    g << if x[:dtype].present?
-                           [class_relation, Vocab::SBM[:objectDatatype], x[:object] == 'None' ? RDF::XSD[:string] : RDF::URI(x[:dtype])]
-                         else
-                           [class_relation, Vocab::SBM[:objectClass], RDF::URI(x[:object])]
-                         end
+                    if x[:dtype].present?
+                      writer.write_triple(class_relation, Vocab::SBM[:objectDatatype], x[:object] == 'None' ? RDF::XSD[:string] : RDF::URI(x[:dtype]))
+                    else
+                      writer.write_triple(class_relation, Vocab::SBM[:objectClass], RDF::URI(x[:object]))
+                    end
 
-                    g << [class_relation, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(x[:total])]
+                    writer.write_triple(class_relation, RDF::Vocab::VOID[:triples], RDF::Literal::Integer.new(x[:total]))
                   end
                 end
               end
@@ -437,7 +443,7 @@ module RDFPortal
                              rescue Sequel::DatabaseConnectionError => e
                                RDFPortal.logger.warn(self.class) { "#{e.message}, retrying..." }
                                if (retry_count += 1) <= 3
-                                 sleep 2**retry_count
+                                 sleep 2 ** retry_count
                                  retry
                                end
                                raise e
