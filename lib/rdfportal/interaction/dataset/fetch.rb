@@ -24,11 +24,12 @@ module RDFPortal
 
         validate :parameters_config
 
-        attr_reader :name, :continue
+        attr_reader :name, :continue, :no_incremental
 
         def initialize(inputs = {})
           @name = inputs.delete(:name)
           @continue = inputs.delete(:continue)
+          @no_incremental = inputs.delete(:no_incremental)
 
           super
         end
@@ -60,6 +61,7 @@ module RDFPortal
                 directory: directory_prefix,
                 parameters:,
                 continue:,
+                no_incremental:,
                 pretend:
               }
 

@@ -25,7 +25,7 @@ module RDFPortal
 
         validate :postprocess_config
 
-        attr_reader :directory, :parameters, :continue
+        attr_reader :directory, :parameters, :continue, :no_incremental
 
         PID_FILE = '.fetch.pid'
 
@@ -42,6 +42,7 @@ module RDFPortal
           @directory = Pathname.new(dir)
           @parameters = inputs.delete(:parameters) || {}
           @continue = inputs.delete(:continue)
+          @no_incremental = inputs.delete(:no_incremental)
 
           super
         end
@@ -108,7 +109,7 @@ module RDFPortal
           pretend_output.puts repository.to_s if pretend
 
           fetch.each do |hash|
-            r = compose(Location, **hash, directory: target_dir, parameters:, continue:, pretend:)
+            r = compose(Location, **hash, directory: target_dir, parameters:, continue:, no_incremental:, pretend:)
             @results.concat(r.is_a?(Array) ? r.flatten : [r])
           end
         rescue StandardError => e

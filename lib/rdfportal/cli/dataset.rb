@@ -25,6 +25,7 @@ module RDFPortal
 
       desc 'fetch <NAME>', 'Fetch dataset'
       option :continue, aliases: '-c', type: :boolean, desc: 'Continue getting last failed dataset'
+      option :no_incremental, aliases: '-I', type: :boolean, desc: 'Do not use incremental fetching'
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
 
       def fetch(name)

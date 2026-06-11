@@ -26,12 +26,13 @@ module RDFPortal
 
         validate :url_config
 
-        attr_reader :directory, :parameters, :continue
+        attr_reader :directory, :parameters, :continue, :no_incremental
 
         def initialize(inputs = {})
           @directory = inputs.delete(:directory)&.then { |d| Pathname.new(d) }
           @parameters = inputs.delete(:parameters) || {}
           @continue = inputs.delete(:continue)
+          @no_incremental = inputs.delete(:no_incremental)
 
           if @parameters.present?
             %i[url output include exclude].each do |attribute|
@@ -58,6 +59,7 @@ module RDFPortal
                                         exclude:,
                                         **options.deep_symbolize_keys,
                                         continue:,
+                                        no_incremental:,
                                         pretend:,
                                         pretend_output:,
                                         directory:)

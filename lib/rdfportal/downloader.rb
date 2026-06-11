@@ -356,6 +356,7 @@ module RDFPortal
     end
 
     def link_latest
+      return if options[:no_incremental]
       return unless options[:directory]
       return unless (target_dir = Pathname.new(options[:directory])).exist?
       return unless (latest = target_dir.dirname.join('latest')).exist?
