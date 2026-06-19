@@ -30,8 +30,6 @@ module RDFPortal
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
 
       def fetch(name)
-        RDFPortal.logger = RDFPortal::Logger.new($stderr)
-
         config = RDFPortal.endpoint_config(name, :load)
 
         datasets = config[:datasets].reject { |x| x.dig(:fetch, :disable) }

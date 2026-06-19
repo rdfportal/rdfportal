@@ -23,6 +23,10 @@ module RDFPortal
     Pathname.new(Dir.home).join('.rdfportal')
   end
 
+  def self.log_dir
+    home.join('log')
+  end
+
   def self.vendor_lib_dir
     Pathname.new(__dir__).parent.join('vendor', 'lib')
   end

@@ -2,13 +2,9 @@
 
 module RDFPortal
   module CLI
-    class Dataset < Thor
-      class << self
-        def exit_on_failure?
-          true
-        end
-      end
+    require_relative 'base'
 
+    class Dataset < Base
       desc 'config <NAME>', 'Parse, resolve and render dataset configuration'
 
       def config(name)
@@ -29,7 +25,13 @@ module RDFPortal
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
 
       def fetch(name)
-        RDFPortal.logger = RDFPortal::Logger.new($stderr) if RDFPortal.debug? || !options[:pretend]
+        RDFPortal.logger = RDFPortal::Logger.new(if RDFPortal.debug? || options[:pretend]
+                                                   $stderr
+                                                 else
+                                                   RDFPortal.log_dir
+                                                            .join('fetch', with_datetime_prefix("#{name}.log"))
+                                                            .tap { |x| x.dirname.mkpath }
+                                                 end)
 
         name, group = name.split('/', 2)
 

@@ -13,6 +13,10 @@ module RDFPortal
 
       private
 
+      def with_datetime_prefix(str)
+        "#{DateTime.now.strftime('%Y%m%d%H%M%S')}_#{str}"
+      end
+
       def repository(name, config)
         opts = {}
 
