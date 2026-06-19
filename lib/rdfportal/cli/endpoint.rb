@@ -27,6 +27,7 @@ module RDFPortal
       desc 'fetch <NAME>', 'Fetch datasets loaded to the endpoint'
       option :continue, aliases: '-c', type: :boolean, desc: 'Continue getting last failed dataset'
       option :from, aliases: '-f', type: :string, desc: 'Start from this dataset'
+      option :no_incremental, aliases: '-I', type: :boolean, desc: 'Do not use incremental fetching'
       option :pretend, aliases: '-p', type: :boolean, desc: 'Run but do not fetch actually'
 
       def fetch(name)
@@ -42,7 +43,7 @@ module RDFPortal
           next if dataset.dig(:fetch, :disable) == true
           next unless File.exist?(RDFPortal.dataset_config_path(dataset[:name]))
 
-          Dataset.new.invoke(:fetch, [dataset[:name]], **options.slice(:continue, :pretend))
+          Dataset.new.invoke(:fetch, [dataset[:name]], **options.slice(:continue, :no_incremental, :pretend))
         end
       end
 
