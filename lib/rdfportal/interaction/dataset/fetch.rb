@@ -8,7 +8,7 @@ module RDFPortal
           string :prefix, default: -> { RDFPortal.datasets_dir.join(name).to_s }
         end
 
-        integer :preserve, default: nil
+        integer :preserve, default: 5
 
         hash :parameters, default: {}, strip: false
 
