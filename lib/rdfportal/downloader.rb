@@ -232,8 +232,8 @@ module RDFPortal
       cmd << '--verbose'
       cmd << '--human-readable'
       cmd << '--links'
-      cmd << '--perms'
       cmd << '--times'
+      cmd << '--chmod=F644,D755'
 
       if recursive
         cmd << '--recursive'
