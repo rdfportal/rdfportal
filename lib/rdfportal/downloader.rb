@@ -246,6 +246,11 @@ module RDFPortal
       cmd << '--partial' if options[:continue]
 
       if include.present?
+        if recursive
+          cmd << '--include'
+          cmd << '*/'
+        end
+
         Array(include).each do |pattern|
           cmd << '--include'
           cmd << pattern
@@ -257,10 +262,17 @@ module RDFPortal
           cmd << '--exclude'
           cmd << pattern
         end
+      elsif include.present?
+        cmd << '--exclude'
+        cmd << '*'
       end
 
       cmd << if uri.scheme == 'rsync'
-               "#{uri.host}::#{uri.path.delete_prefix('/')}"
+               if uri.host.present?
+                 "#{uri.host}::#{uri.path.delete_prefix('/')}"
+               else
+                 uri.path
+               end
              elsif (host = options.dig(:ssh, :host))
                program = ['ssh']
 
