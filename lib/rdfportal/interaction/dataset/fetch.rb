@@ -121,7 +121,7 @@ module RDFPortal
         end
 
         def resolve_parameters
-          return if parameters.blank?
+          return {} if parameters.blank?
 
           RDFPortal.logger.info(self.class) { 'Resolving parameters...' }
 
