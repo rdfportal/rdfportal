@@ -1,3 +1,6 @@
 [submodule "vendor/lib/ConvRDF"]
 	path = vendor/lib/ConvRDF
 	url = https://github.com/dbcls/ConvRDF.git
+[submodule "vendor/lib/rdfportal-metadata"]
+	path = vendor/lib/rdfportal-metadata
+	url = https://github.com/rdfportal/rdfportal-metadata.git
