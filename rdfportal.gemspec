@@ -38,6 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '~> 1.15'
   spec.add_dependency 'odbc_adapter', '~> 5.0'
   spec.add_dependency 'parallel', '~> 1.27'
+  spec.add_dependency 'pycall', '~> 1.5', '>= 1.5.3'
   spec.add_dependency 'sequel', '~> 5.97'
   spec.add_dependency 'slack-notifier', '~> 2.4'
   spec.add_dependency 'thor', '~> 1.2'
