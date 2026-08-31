@@ -105,6 +105,7 @@ module RDFPortal
   require 'rdfportal/logger'
   require 'rdfportal/matcher'
   require 'rdfportal/notifier'
+  require 'rdfportal/python'
   require 'rdfportal/resource'
   require 'rdfportal/repository'
   require 'rdfportal/resolver'
