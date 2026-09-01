@@ -62,6 +62,34 @@ module RDFPortal
       def statistics(**options)
         raise NotImplementedError
       end
+
+      private
+
+      def datasets
+        return @datasets if @datasets
+
+        datasets = options[:datasets].reject { |x| x.dig(:stat, :disable) == true }
+                                     .flat_map { |x| RDFPortal.graph_config(x[:name]).map { |y| { name: x[:name], graph: y[:graph] } } }
+                                     .uniq
+
+        if stat_graph_disabled? && datasets.size > 1
+          raise Error, 'Multiple datasets are not allowed when trig is enabled.'
+        end
+
+        if (dup = datasets.group_by { |x| x[:graph] }.filter { |_, v| v.size > 1 }).any?
+          dup.each do |k, v|
+            RDFPortal.logger.warn(self.class) do
+              "#{v.map(&:dataset).uniq.join(', ')} are mapped to the same graph <#{k}>"
+            end
+          end
+        end
+
+        @datasets = datasets
+      end
+
+      def stat_graph_disabled?
+        options.dig(:stat, :graph) == false
+      end
     end
   end
 end

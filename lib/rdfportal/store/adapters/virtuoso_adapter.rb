@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'csv'
+
 module RDFPortal
   module Store
     require 'rdfportal/store/abstract_adapter'
@@ -8,9 +10,8 @@ module RDFPortal
       class VirtuosoAdapter < AbstractAdapter
         require 'rdfportal/store/adapters/virtuoso_adapter/connection'
         require 'rdfportal/store/adapters/virtuoso_adapter/executable'
-        require 'rdfportal/store/adapters/virtuoso_adapter/statistics'
 
-        READY_TIMEOUT = 5 * 60
+        include ExternalCommand
 
         class << self
           # @param [String] name Endpoint name
@@ -195,36 +196,105 @@ module RDFPortal
         end
 
         def statistics(**options)
-          statistics = Statistics.new(self)
+          %w[pyodbc rdflib].each do |lib|
+            RDFPortal::Python.install(lib) unless RDFPortal::Python.installed?(lib)
+          end
 
           output_dir = Pathname.new(options[:output_dir] || '.')
+          port = self.options.fetch(:port, 8890)
+          endpoint = self.options.dig(:stat, :endpoint) || "http://localhost:#{port}/sparql"
 
-          unless (gspo = output_dir.join('gspo.yml.gz')).exist?
+          RDFPortal.logger.info(self.class) { "Graph clause is #{stat_graph_disabled? ? 'disabled' : 'enabled'}." }
+
+          unless (gspo = output_dir.join('gspo.txt.gz')).exist?
             RDFPortal.logger.info(self.class) { 'Collecting GSPO...' }
-            statistics.gspo(gspo)
+
+            cmd = [
+              RDFPortal::Python.executable,
+              RDFPortal.vendor_lib_dir.join('rdfportal-metadata', 'get_gspo.py').to_s,
+              '--output', gspo.to_s,
+              port.to_s
+            ]
+
+            cmd.push(*datasets.map { |dataset| dataset[:graph] }) unless stat_graph_disabled?
+
+            run_cmd!(*cmd, stdout: :info, stderr: :info)
           end
 
-          unless (count = output_dir.join('gspo_count.yml.gz')).exist?
+          unless (gspo_count = output_dir.join('gspo_count.txt.gz')).exist?
             RDFPortal.logger.info(self.class) { 'Counting GSPO...' }
-            statistics.gspo_count(gspo, count)
+
+            cmd = [
+              RDFPortal::Python.executable,
+              RDFPortal.vendor_lib_dir.join('rdfportal-metadata', 'count_gspo.py').to_s,
+              '--output', gspo_count.to_s,
+              gspo.to_s
+            ]
+
+            run_cmd!(*cmd, stdout: :info, stderr: :info)
           end
 
-          unless (stat = output_dir.join('statistics.yml')).exist?
-            RDFPortal.logger.info(self.class) { 'Aggregating statistics...' }
-            File.write(stat, YAML.dump(statistics.statistics(count).sort.to_h))
+          unless (statistics = output_dir.join('statistics.yml')).exist?
+            RDFPortal.logger.info(self.class) { 'Generating statistics...' }
+
+            aggs = Hash.new { |h1, k1| h1[k1] = {} }
+            date = Time.now.strftime('%Y-%m-%d')
+
+            Zlib::GzipReader.open(gspo_count) do |gz|
+              gz.each do |line|
+                break if line.start_with?('###END')
+                next if line.start_with?('SPARQL')
+                next if (line = line.strip[1...-1]).blank?
+
+                result = CSV.parse_line(line, quote_char: "'", strip: true)
+
+                case result[1]
+                when 'total_entity_count', 'distinct_subject_count', 'distinct_object_count'
+                  aggs[result[0]][result[1].to_sym] ||= 0
+                  aggs[result[0]][result[1].to_sym] += Integer(result[2])
+                when 'distinct_class_entity_count'
+                  aggs[result[0]][:classes] ||= Set.new
+                  aggs[result[0]][:classes] << result[2]
+                when 'pred_count'
+                  aggs[result[0]][:predicates] ||= Set.new
+                  aggs[result[0]][:predicates] << result[2]
+                else
+                  next
+                end
+              end
+            end
+
+            stat = datasets.group_by { |dataset| dataset[:name] }.transform_values do |groups|
+              graphs = groups.map { |dataset| dataset[:graph] }
+
+              {
+                total_count: graphs.filter_map { |g| aggs[g][:total_entity_count] }.sum,
+                uniq_subject_count: graphs.filter_map { |g| aggs[g][:distinct_subject_count] }.sum,
+                uniq_object_count: graphs.filter_map { |g| aggs[g][:distinct_object_count] }.sum,
+                classes: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:classes] || []) }.size,
+                properties: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:predicates] || []) }.size,
+                issued_at: date
+              }
+            end
+
+            File.write(statistics, YAML.dump(stat.sort.to_h))
           end
 
-          void = output_dir.join("void_plus.#{options[:void_format] == 'ntriples' ? 'nt' : 'ttl'}.gz")
+          unless (void = output_dir.join('void_plus.ttl.gz')).exist?
+            RDFPortal.logger.info(self.class) { 'Generating VoID...' }
 
-          return if void.exist?
+            cmd = [
+              RDFPortal::Python.executable,
+              RDFPortal.vendor_lib_dir.join('rdfportal-metadata', 'aggregate.py').to_s,
+              '--output', void.to_s,
+              gspo_count.to_s,
+              endpoint
+            ]
 
-          RDFPortal.logger.info(self.class) { "Generating VoID(#{options[:void_format]})..." }
-
-          File.open(void, 'w') do |file|
-            gz = Zlib::GzipWriter.new(file, Zlib::DEFAULT_COMPRESSION, Zlib::DEFAULT_STRATEGY)
-            statistics.write_void(gz, count, format: options[:void_format] == 'ntriples' ? :ntriples : :ttl)
-            gz.close
+            run_cmd!(*cmd, stdout: :info, stderr: :info)
           end
+
+          RDFPortal.logger.info(self.class) { 'Successfully generated statistics' }
         end
 
         def connection

@@ -39,7 +39,6 @@ module RDFPortal
         hash :stat, default: {} do
           boolean :graph, default: true
           string :endpoint, default: nil
-          string :void_format, default: 'turtle'
         end
 
         hash :publish, default: {} do
