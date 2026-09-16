@@ -40,7 +40,9 @@ module RDFPortal
               env['RDFPORTAL_DATASETS_DIR'] = RDFPortal.datasets_dir.to_s
 
               cmd = if hash[:file].present?
-                      File.executable?(hash[:file]) ? [hash[:file]] : ['sh', hash[:file]]
+                      v = File.executable?(hash[:file]) ? [hash[:file]] : ['sh', hash[:file]]
+                      v.push(*hash[:arguments]) if hash[:arguments].present? || hash[:arguments].is_a?(Array)
+                      v
                     elsif hash[:script].present?
                       hash[:script]
                     else
