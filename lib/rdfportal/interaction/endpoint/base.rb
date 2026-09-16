@@ -49,6 +49,7 @@ module RDFPortal
                 string :file, default: nil
                 string :script, default: nil
                 hash :environments, default: {}, strip: false
+                array :arguments, default: []
               end
             end
           end
@@ -60,6 +61,7 @@ module RDFPortal
                 string :file, default: nil
                 string :script, default: nil
                 hash :environments, default: {}, strip: false
+                array :arguments, default: []
               end
             end
           end
