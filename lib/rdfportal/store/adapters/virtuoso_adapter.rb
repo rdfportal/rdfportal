@@ -271,8 +271,8 @@ module RDFPortal
                 total_count: graphs.filter_map { |g| aggs[g][:total_entity_count] }.sum,
                 uniq_subject_count: graphs.filter_map { |g| aggs[g][:distinct_subject_count] }.sum,
                 uniq_object_count: graphs.filter_map { |g| aggs[g][:distinct_object_count] }.sum,
-                classes: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:classes] || []) }.size,
-                properties: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:predicates] || []) }.size,
+                class_count: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:classes] || []) }.size,
+                property_count: graphs.inject(Set.new) { |memo, v| memo.merge(aggs[v][:predicates] || []) }.size,
                 issued_at: date
               }
             end
